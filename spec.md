@@ -271,6 +271,7 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
     *   `DISABLE_AUTH`: `"true"` (bypass logins) or `"false"` (enforce logins).
     *   `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth app keys.
     *   `ALLOWED_GITHUB_USERS`: Whitelist for directory dashboard views.
+    *   `INSTANCE_ID`: Namespace prefix identifier to isolate multiple application environments (e.g., staging vs. production) sharing a single Deno KV database instance (defaults to `"default"`).
 
 ---
 
@@ -278,7 +279,7 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
 *   [ ] **Security Mechanism with App Key**: Implement a shared application key verification mechanism for both IoT devices and client browser connections to prevent unauthorized dashboard discovery and session hijacking.
 *   [ ] **Public Panels**: Allow devices to publish their dashboards as public, read-only panels that can be viewed by unauthenticated users, while keeping control leases restricted to authorized sessions.
 *   [ ] **Integration Tests for Mock Authentication**: Implement an integration test suite validating the authorization boundary using a dummy login interface (mock developer auth flow) enabled via a dedicated environment variable switch (e.g., `MOCK_AUTH=true`) to test authentication states without querying the live GitHub API.
-*   [ ] **Create GitHub Repository**: Set up a public GitHub repository for the Every-Panel project, including automated Deno Deploy workflow integrations for continuous deployment upon git push actions.
+*   [X] **Create GitHub Repository**: Set up a public GitHub repository for the Every-Panel project, including automated Deno Deploy workflow integrations for continuous deployment upon git push actions.
 *   [x] **Refactor into Multi-File Deno Project**: Split the monolithic `main.ts` codebase (currently ~2,000 lines) into a modular, clean multi-file Deno project structure (e.g., separating the DB controllers, HTTP routers, authentication middleware, WebSocket handlers, and static HTML templates).
 *   [ ] **Comprehensive Deployment and Hardware Guide**: Add detailed examples and documentation outlining (1) [x] the step-by-step setup configuration for Deno Deploy (environment variables, Deno KV activation) and (2) [ ] the physical ESP32 hardware wiring description (DS18B20 1-Wire pinout connections, GPIO26 wiring, and pull-up resistor requirements).
 *   [ ] **Mobile-Friendly UI Optimization**: Optimize the Glassmorphism layout for small screens and mobile devices, introducing touch-optimized controls (larger tap targets, slider thumb adjustments), responsive flex-wrap cards, and smooth pull-to-refresh gestures.

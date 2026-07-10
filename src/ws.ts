@@ -1,5 +1,6 @@
 import {
   kv,
+  pk,
   saveLatestTelemetry,
   saveUIDefinition,
   getUIDefinition,
@@ -28,7 +29,7 @@ setInterval(async () => {
       if (current && current.socket === dev.socket) {
         devices.delete(deviceId);
         // Update global status in Deno KV to detached
-        await kv.set(["device", deviceId, "status"], { state: "detached", controllerSessionId: null });
+        await kv.set(pk("device", deviceId, "status"), { state: "detached", controllerSessionId: null });
       }
     } else {
       if (dev.socket.readyState === WebSocket.OPEN) {
@@ -39,7 +40,7 @@ setInterval(async () => {
 }, 5000);
 
 export function startDeviceKVWatcher(socket: WebSocket, deviceId: string) {
-  const watchKeys = [["device", deviceId, "command"]];
+  const watchKeys = [pk("device", deviceId, "command")];
   const watcher = kv.watch(watchKeys);
   const reader = watcher.getReader();
   
@@ -127,7 +128,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
       devices.set(deviceId, { socket, lastSeen: Date.now() });
       
       // Update global state in Deno KV
-      await kv.set(["device", deviceId, "status"], { state: "live", controllerSessionId: null });
+      await kv.set(pk("device", deviceId, "status"), { state: "live", controllerSessionId: null });
       broadcastLocalStatus(deviceId, "live", null);
 
       // Start watcher for commands sent to this device
@@ -182,7 +183,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
       else if (role === "client") {
         if (msg.type === "acquire_control") {
           console.log(`[WS] Client tab '${tabId}' acquiring control lease for ${deviceId}`);
-          await kv.set(["device", deviceId, "status"], {
+          await kv.set(pk("device", deviceId, "status"), {
             state: "control",
             controllerSessionId: tabId
           });
@@ -190,7 +191,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
         } 
         
         else if (msg.type === "release_control") {
-          const statusKey = ["device", deviceId, "status"];
+          const statusKey = pk("device", deviceId, "status");
           const statusRes = await kv.get<GlobalDeviceStatus>(statusKey);
           if (statusRes.value && statusRes.value.controllerSessionId === tabId) {
             console.log(`[WS] Client tab '${tabId}' releasing control lease for ${deviceId}`);
@@ -211,7 +212,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
           const cmdMsg = msg as CommandMessage;
           
           // Security Check: Verify this client tab holds the control lock lease in KV
-          const statusRes = await kv.get<GlobalDeviceStatus>(["device", cmdMsg.device_id, "status"]);
+          const statusRes = await kv.get<GlobalDeviceStatus>(pk("device", cmdMsg.device_id, "status"));
           if (!statusRes.value || statusRes.value.controllerSessionId !== tabId) {
             socket.send(JSON.stringify({
               type: "error",
@@ -230,7 +231,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
           // Write command key to KV to trigger the device watcher (cross-isolate compatible)
           const commitRes = await kv.atomic()
             .check(statusRes)
-            .set(["device", cmdMsg.device_id, "command"], cmdMsg)
+            .set(pk("device", cmdMsg.device_id, "command"), cmdMsg)
             .commit();
           if (!commitRes.ok) {
             socket.send(JSON.stringify({
@@ -253,7 +254,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
         devices.delete(deviceId);
         
         // Update global state in Deno KV to detached
-        await kv.set(["device", deviceId, "status"], { state: "detached", controllerSessionId: null });
+        await kv.set(pk("device", deviceId, "status"), { state: "detached", controllerSessionId: null });
         broadcastLocalStatus(deviceId, "detached", null);
       } else {
         console.log(`[WS] Stale device socket closed for ${deviceId} (ignored)`);
@@ -265,7 +266,7 @@ export function handleWebSocketUpgrade(req: Request): Response {
       clients.delete(socket);
       
       // Release control if this client tab held the active lease lock
-      const statusKey = ["device", deviceId, "status"];
+      const statusKey = pk("device", deviceId, "status");
       const statusRes = await kv.get<GlobalDeviceStatus>(statusKey);
       if (statusRes.value && statusRes.value.controllerSessionId === tabId) {
         console.log(`[WS] Active controller tab disconnected. Releasing lease for ${deviceId}`);
@@ -288,9 +289,9 @@ export function handleWebSocketUpgrade(req: Request): Response {
 
 export function startKVWatcher(socket: WebSocket, deviceId: string, sessionId: string) {
   const watchKeys = [
-    ["device", deviceId, "status"],
-    ["device", deviceId, "ui_definition"],
-    ["device", deviceId, "latest"]
+    pk("device", deviceId, "status"),
+    pk("device", deviceId, "ui_definition"),
+    pk("device", deviceId, "latest")
   ];
 
   const watcher = kv.watch(watchKeys);

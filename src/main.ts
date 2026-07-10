@@ -1,5 +1,6 @@
 import {
   kv,
+  pk,
   DISABLE_AUTH,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
@@ -189,18 +190,18 @@ async function handler(req: Request): Promise<Response> {
   // REST API: Get all registered devices in KV store
   if (path === "/api/devices") {
     const devicesList = [];
-    const prefix = ["device"];
+    const prefix = pk("device");
     const list = kv.list({ prefix });
     const seenIds = new Set<string>();
 
     for await (const entry of list) {
-      // Key format: ["device", deviceId, "ui_definition"] or similar
-      const deviceId = entry.key[1];
+      // Key format: [INSTANCE_ID, "device", deviceId, "ui_definition"] or similar
+      const deviceId = entry.key[2];
       if (typeof deviceId !== "string" || seenIds.has(deviceId)) continue;
       seenIds.add(deviceId);
 
       const uiDef = await getUIDefinition(deviceId);
-      const statusRes = await kv.get<GlobalDeviceStatus>(["device", deviceId, "status"]);
+      const statusRes = await kv.get<GlobalDeviceStatus>(pk("device", deviceId, "status"));
 
       // Determine state - default to detached if not found
       let state = "detached";
@@ -219,7 +220,7 @@ async function handler(req: Request): Promise<Response> {
       // Calculate history stats footprint
       let historyCount = 0;
       let historyBytes = 0;
-      const historyIter = kv.list({ prefix: ["device", deviceId, "history"] });
+      const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
       for await (const entry of historyIter) {
         historyCount++;
         const serialized = JSON.stringify(entry.value);
@@ -227,7 +228,7 @@ async function handler(req: Request): Promise<Response> {
       }
 
       // Load retention TTL setting
-      const settingsRes = await kv.get<{ historyTtlDays: number }>(["device", deviceId, "settings"]);
+      const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
       const historyTtlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7; // default to 7 days
 
       devicesList.push({
@@ -255,7 +256,7 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ success: false, error: "Missing deviceId or historyTtlDays" }), { status: 400 });
     }
     
-    await kv.set(["device", deviceId, "settings"], { historyTtlDays: Number(historyTtlDays) });
+    await kv.set(pk("device", deviceId, "settings"), { historyTtlDays: Number(historyTtlDays) });
     
     return new Response(JSON.stringify({ success: true }), {
       headers: { "content-type": "application/json; charset=utf-8" },
@@ -269,11 +270,11 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ success: false, error: "Missing device_id" }), { status: 400 });
     }
 
-    await kv.delete(["device", deviceId, "ui_definition"]);
-    await kv.delete(["device", deviceId, "latest"]);
-    await kv.delete(["device", deviceId, "status"]);
+    await kv.delete(pk("device", deviceId, "ui_definition"));
+    await kv.delete(pk("device", deviceId, "latest"));
+    await kv.delete(pk("device", deviceId, "status"));
 
-    const historyIter = kv.list({ prefix: ["device", deviceId, "history"] });
+    const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
     for await (const entry of historyIter) {
       await kv.delete(entry.key);
     }
