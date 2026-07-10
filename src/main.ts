@@ -18,7 +18,7 @@ import {
 import {
   getPanelHtml,
   getDevicesDirectoryHtml,
-  LOGIN_HTML
+  getLoginHtml
 } from "./views.ts";
 import {
   handleWebSocketUpgrade
@@ -70,7 +70,7 @@ async function handler(req: Request): Promise<Response> {
     if (isAuthorized) {
       return Response.redirect(`${url.origin}/`, 302);
     }
-    return new Response(LOGIN_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+    return new Response(getLoginHtml(), { headers: { "content-type": "text/html; charset=utf-8" } });
   }
 
   // Trigger GitHub OAuth redirect

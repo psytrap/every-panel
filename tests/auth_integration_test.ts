@@ -34,6 +34,14 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(unauthRes.headers.get("location"), `${baseUrl}/login`);
     await unauthRes.body?.cancel();
 
+    // Verify that the login UI actively displays mock auth indicators to the user
+    console.log("[Test] 1b. Verifying Mock Auth warnings are visible on the login UI...");
+    const loginPageRes = await fetch(`${baseUrl}/login`);
+    assertEquals(loginPageRes.status, 200);
+    const loginHtml = await loginPageRes.text();
+    assertEquals(loginHtml.includes("Mock Authentication Active"), true);
+    assertEquals(loginHtml.includes("Developer Login"), true);
+
     // Test Case 2: Block login of unauthorized user (not in allowed list)
     console.log("[Test] 2. Verifying unauthorized user is blocked...");
     const githubRedirectRes = await fetch(`${baseUrl}/login/github?mock_code=charlie`, { redirect: "manual" });
@@ -79,6 +87,8 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(authPageRes.status, 200);
     const htmlText = await authPageRes.text();
     assertEquals(htmlText.includes("Device Directory"), true);
+    // Verify that the header contains the visual "Mock Auth" warning badge
+    assertEquals(htmlText.includes("Mock Auth"), true);
 
     // Test Case 5: Logout invalidates and deletes the session
     console.log("[Test] 5. Verifying logout routine clears session state...");
