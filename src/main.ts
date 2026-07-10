@@ -2,6 +2,7 @@ import {
   kv,
   pk,
   DISABLE_AUTH,
+  MOCK_AUTH,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   ALLOWED_GITHUB_USERS,
@@ -77,6 +78,10 @@ async function handler(req: Request): Promise<Response> {
     if (DISABLE_AUTH) {
       return Response.redirect(`${url.origin}/`, 302);
     }
+    if (MOCK_AUTH) {
+      const mockCode = url.searchParams.get("mock_code") || "mock_user";
+      return Response.redirect(`${url.origin}/login/callback?code=${mockCode}`, 302);
+    }
     if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
       console.error("[Auth] GitHub OAuth credentials not configured!");
       return Response.redirect(`${url.origin}/login?error=no_config`, 302);
@@ -99,6 +104,29 @@ async function handler(req: Request): Promise<Response> {
     const code = url.searchParams.get("code");
     if (!code) {
       return Response.redirect(`${url.origin}/login?error=oauth_failed`, 302);
+    }
+
+    if (MOCK_AUTH) {
+      const gitUsername = code.toLowerCase();
+      
+      // Validate against Allowed Users list
+      if (ALLOWED_GITHUB_USERS.length > 0 && !ALLOWED_GITHUB_USERS.includes(gitUsername)) {
+        console.warn(`[Auth] Mock User '${gitUsername}' attempted login but is not in allowed list.`);
+        return Response.redirect(`${url.origin}/login?error=not_allowed`, 302);
+      }
+
+      // Successful authentication: Create Session
+      const randomSessionId = crypto.randomUUID();
+      const expires = await createSession(randomSessionId, gitUsername);
+      const expiresDate = new Date(expires).toUTCString();
+
+      return new Response("", {
+        status: 302,
+        headers: {
+          "Location": "/",
+          "Set-Cookie": `${COOKIE_NAME}=${randomSessionId}; Path=/; HttpOnly; SameSite=Strict; Expires=${expiresDate}; Secure`,
+        },
+      });
     }
 
     try {

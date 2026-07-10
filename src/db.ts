@@ -5,12 +5,13 @@ export const kv = await Deno.openKv(Deno.env.get("KV_PATH"));
 export const INSTANCE_ID = Deno.env.get("INSTANCE_ID") || "default";
 
 // Helper function to build namespace-prefixed database keys
-export function pk(...keyParts: unknown[]): unknown[] {
+export function pk(...keyParts: Deno.KvKeyPart[]): Deno.KvKeyPart[] {
   return [INSTANCE_ID, ...keyParts];
 }
 
 // Configurations from Environment Variables
 export const DISABLE_AUTH = Deno.env.get("DISABLE_AUTH") === "true";
+export const MOCK_AUTH = Deno.env.get("MOCK_AUTH") === "true";
 export const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID") || "";
 export const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET") || "";
 export const ALLOWED_GITHUB_USERS = (Deno.env.get("ALLOWED_GITHUB_USERS") || "")
