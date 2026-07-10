@@ -1,8 +1,8 @@
 {
   "tasks": {
-    "dev": "DISABLE_AUTH=true deno run --watch --allow-net --allow-env --unstable-kv main.ts",
-    "dev:lan": "DISABLE_AUTH=true HOST=0.0.0.0 deno run --watch --allow-net --allow-env --unstable-kv main.ts",
-    "device": "deno run --watch --allow-net --allow-env device_emulator.ts",
-    "test": "deno test --allow-run --allow-net --allow-env --allow-read --allow-write --unstable-kv test_integration.ts"
+    "dev": "DISABLE_AUTH=true deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
+    "dev:lan": "DISABLE_AUTH=true HOST=0.0.0.0 deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
+    "device": "deno run --watch --allow-net --allow-env examples/device_emulator.ts",
+    "test": "deno test --allow-run --allow-net --allow-env --allow-read --allow-write --unstable-kv tests/test_integration.ts"
   }
 }

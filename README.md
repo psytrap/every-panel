@@ -188,8 +188,31 @@ Run both the server and the dummy device emulator locally:
 
 ---
 
+## Deploying to Deno Deploy
+
+This project is 100% compatible with Deno Deploy. To deploy the server to the cloud:
+
+1.  **Select Entrypoint**: Set **`src/main.ts`** as the project entrypoint in your Deno Deploy project settings.
+2.  **Environment Variables**: Bind the following variables in the Deno Deploy dashboard under **Settings > Environment Variables**:
+    *   `DISABLE_AUTH`: `"true"` (to bypass login) or `"false"` (to use GitHub OAuth authentication).
+    *   `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app secrets (if authentication is enabled).
+    *   `ALLOWED_GITHUB_USERS`: Comma-separated list of GitHub logins permitted to access the panel directory.
+3.  **Deno KV Database**: Leave the `KV_PATH` environment variable empty on the cloud. Deno Deploy will automatically bind the application to its managed, zero-config production database instance.
+4.  **Static Files**: Deno Deploy automatically packages and serves all static file assets located inside the `/public` directory.
+
+---
+
 ## Code Files Overview
-*   [main.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/main.ts): Single-file entry point router, WebSocket lease manager, database store, and CSS dynamic layout templates.
-*   [device_emulator.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/device_emulator.ts): Web-based IoT device emulator.
-*   [deno.json](file:///home/mik/Documents/Bastel/2023-/every-panel/deno.json): Local dev task configurations.
-*   [spec.md](file:///home/mik/Documents/Bastel/2023-/every-panel/spec.md): Complete systems design specification.
+*   [src/main.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/src/main.ts): Central HTTP router entry point and request router.
+*   [src/db.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/src/db.ts): Deno KV initialization, configuration settings, and database operations.
+*   [src/ws.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/src/ws.ts): WebSocket upgrade logic, keepalive ping heartbeat loop, and command/telemetry synchronization watchers.
+*   [src/views.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/src/views.ts): Dynamically-rendered HTML skeleton page templates.
+*   [public/style.css](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/public/style.css): Main Glassmorphism UI stylesheet.
+*   [public/login.js](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/public/login.js): Client-side JavaScript handling login errors.
+*   [public/panel.js](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/public/panel.js): Client-side JavaScript for the main control panel workspace (WS connection, Chart.js, rendering).
+*   [public/devices.js](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/public/devices.js): Client-side JavaScript for the registered devices index directory list.
+*   [examples/device_emulator.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/examples/device_emulator.ts): Web-based IoT device emulator.
+*   [tests/test_integration.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/test_integration.ts): Integration test verifying concurrent WebSockets lease allocations and command routing.
+*   [tests/test_plan.md](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/test_plan.md): Architectural test strategy and verification plans.
+*   [deno.json](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/deno.json): Local dev task configurations.
+*   [spec.md](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/spec.md): Complete systems design specification.

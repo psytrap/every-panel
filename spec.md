@@ -263,6 +263,14 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
     *   `control`: Color indicator is Green. Action button displays "Release Control". Widgets are active and interactive if this client holds the lease.
 *   **Glassmorphism Theme**: Sleek dark mode using background blur, semi-transparent panels, and glowing card headers.
 *   **Live Charts**: Line graphs plotting sensor values over time fetched via the `/api/history` endpoint.
+### 6.1 Deno Deploy Specifications
+*   **Entry Point**: `src/main.ts` serves as the primary router and HTTP listener module.
+*   **Virtual File System**: Standard filesystem APIs (e.g., `Deno.readTextFile`) resolve assets relative to the repository workspace root under Deno Deploy's continuous integration layer, allowing dynamic retrieval of static files inside the `public/` directory.
+*   **Zero-Config managed KV**: In cloud environments, initializing `Deno.openKv()` with an undefined path automatically binds the client instance to the platform's distributed production-grade Deno KV cloud instance.
+*   **Environment Variable Mappings**: All authentication policies, secrets, and authorization boundaries are populated via standard environment variables:
+    *   `DISABLE_AUTH`: `"true"` (bypass logins) or `"false"` (enforce logins).
+    *   `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth app keys.
+    *   `ALLOWED_GITHUB_USERS`: Whitelist for directory dashboard views.
 
 ---
 
@@ -271,8 +279,8 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
 *   [ ] **Public Panels**: Allow devices to publish their dashboards as public, read-only panels that can be viewed by unauthenticated users, while keeping control leases restricted to authorized sessions.
 *   [ ] **Integration Tests for Mock Authentication**: Implement an integration test suite validating the authorization boundary using a dummy login interface (mock developer auth flow) enabled via a dedicated environment variable switch (e.g., `MOCK_AUTH=true`) to test authentication states without querying the live GitHub API.
 *   [ ] **Create GitHub Repository**: Set up a public GitHub repository for the Every-Panel project, including automated Deno Deploy workflow integrations for continuous deployment upon git push actions.
-*   [ ] **Refactor into Multi-File Deno Project**: Split the monolithic `main.ts` codebase (currently ~2,000 lines) into a modular, clean multi-file Deno project structure (e.g., separating the DB controllers, HTTP routers, authentication middleware, WebSocket handlers, and static HTML templates).
-*   [ ] **Comprehensive Deployment and Hardware Guide**: Add detailed examples and documentation outlining (1) the step-by-step setup configuration for Deno Deploy (environment variables, Deno KV activation) and (2) the physical ESP32 hardware wiring description (DS18B20 1-Wire pinout connections, GPIO26 wiring, and pull-up resistor requirements).
+*   [x] **Refactor into Multi-File Deno Project**: Split the monolithic `main.ts` codebase (currently ~2,000 lines) into a modular, clean multi-file Deno project structure (e.g., separating the DB controllers, HTTP routers, authentication middleware, WebSocket handlers, and static HTML templates).
+*   [ ] **Comprehensive Deployment and Hardware Guide**: Add detailed examples and documentation outlining (1) [x] the step-by-step setup configuration for Deno Deploy (environment variables, Deno KV activation) and (2) [ ] the physical ESP32 hardware wiring description (DS18B20 1-Wire pinout connections, GPIO26 wiring, and pull-up resistor requirements).
 *   [ ] **Mobile-Friendly UI Optimization**: Optimize the Glassmorphism layout for small screens and mobile devices, introducing touch-optimized controls (larger tap targets, slider thumb adjustments), responsive flex-wrap cards, and smooth pull-to-refresh gestures.
 *   [ ] **Refine Telemetry History Charts**: Enhance the historical line chart visualizer in the panel UI, adding custom time-range selectors (1 hour, 24 hours, 7 days), zooming and panning features, multi-metric axis support, and clean hovering tooltips.
 *   [ ] **Server-Side Telemetry Downsampling & Aggregation Policy**: Implement a configurable storage interval policy on the server to downsample historical database logs. Instead of writing every raw telemetry message to Deno KV, buffer incoming data points over a time interval (e.g., 1 minute or 5 minutes) and write a single consolidated data point storing the `min`, `max`, `average`, and `latest` values for each sensor during that time slice.
