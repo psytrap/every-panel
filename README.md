@@ -213,6 +213,8 @@ This project is 100% compatible with Deno Deploy. To deploy the server to the cl
 *   [public/devices.js](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/public/devices.js): Client-side JavaScript for the registered devices index directory list.
 *   [examples/device_emulator.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/examples/device_emulator.ts): Web-based IoT device emulator.
 *   [tests/integration_test.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/integration_test.ts): Integration test verifying concurrent WebSockets lease allocations and command routing.
+*   [tests/db_test.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/db_test.ts): Unit tests verifying session storage, validation, lifecycle, and expiration operations.
+*   [tests/auth_integration_test.ts](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/auth_integration_test.ts): Integration tests validating OAuth authentication redirect endpoints, session cookie creation, whitelist permissions, and logout flows.
 *   [tests/test_plan.md](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/tests/test_plan.md): Architectural test strategy and verification plans.
 *   [deno.json](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/deno.json): Local dev task configurations.
 *   [spec.md](file:///home/mik/Documents/Bastel/2023-/every-panel/every-panel/spec.md): Complete systems design specification.
