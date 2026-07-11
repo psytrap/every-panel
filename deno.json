@@ -1,9 +1,11 @@
 {
   "version": "2.0.0",
-  "releaseDate": "2026-07-11 09:52",
+  "releaseDate": "2026-07-11 10:09",
   "tasks": {
-    "dev": "DISABLE_AUTH=true deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
-    "dev:lan": "DISABLE_AUTH=true HOST=0.0.0.0 deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
+    "version-update": "deno run --allow-read --allow-write scripts/update_release_date.ts",
+    "version-check": "deno run --allow-read scripts/check_version_timestamp.ts",
+    "dev": "deno task version-update && DISABLE_AUTH=true deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
+    "dev:lan": "deno task version-update && DISABLE_AUTH=true HOST=0.0.0.0 deno run --watch --allow-net --allow-env --allow-read --unstable-kv src/main.ts",
     "device": "deno run --watch --allow-net --allow-env examples/device_emulator.ts",
     "test": "deno test --allow-run --allow-net --allow-env --allow-read --allow-write --unstable-kv tests/"
   }

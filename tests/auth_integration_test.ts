@@ -1,6 +1,9 @@
 // tests/auth_integration_test.ts
 import { assertEquals, assertNotEquals } from "https://deno.land/std@0.200.0/assert/mod.ts";
 import { fromFileUrl, join } from "https://deno.land/std@0.200.0/path/mod.ts";
+import denoConfig from "../deno.json" with { type: "json" };
+
+const expectedVersion = `v${denoConfig.version} (${denoConfig.releaseDate})`;
 
 const mainTsPath = join(fromFileUrl(import.meta.url), "../../src/main.ts");
 const port = "8006";
@@ -42,7 +45,7 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(loginHtml.includes("Mock Authentication Active"), true);
     assertEquals(loginHtml.includes("Developer Login"), true);
     // Verify version tag is present on the login UI
-    assertEquals(loginHtml.includes("v2.0.0 (2026-07-11 09:52)"), true);
+    assertEquals(loginHtml.includes(expectedVersion), true);
 
     // Test Case 2: Block login of unauthorized user (not in allowed list)
     console.log("[Test] 2. Verifying unauthorized user is blocked...");
@@ -92,7 +95,7 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     // Verify that the header contains the visual "Mock Auth" warning badge
     assertEquals(htmlText.includes("Mock Auth"), true);
     // Verify that the header contains the version tag
-    assertEquals(htmlText.includes("v2.0.0 (2026-07-11 09:52)"), true);
+    assertEquals(htmlText.includes(expectedVersion), true);
 
     // Verify stats diagnostics page is secure and loads correctly
     console.log("[Test] 4b. Verifying stats view and stats REST API load successfully...");
