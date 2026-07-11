@@ -79,48 +79,8 @@
         container.innerHTML = `<div class="glass empty-state"><p style="color:var(--danger-color);">Error loading directory list.</p></div>`;
       }
     }
-    }
 
-    function formatBytes(bytes) {
-      if (bytes === 0) return "0 Bytes";
-      const k = 1024;
-      const sizes = ["Bytes", "KB", "MB"];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-    }
 
-    async function updateTtl(deviceId, days) {
-      try {
-        const res = await fetch("/api/devices/settings", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ deviceId, historyTtlDays: Number(days) })
-        });
-        const data = await res.json();
-        if (data.success) {
-          // Soft refresh statistics footprint after change
-          loadDevices();
-        } else {
-          alert("Failed to update retention policy: " + data.error);
-        }
-      } catch (e) {
-        alert("Failed to update retention policy.");
-      }
-    }
-
-    async function wipeDevice(id) {
-      if (!confirm("Are you sure you want to delete this device's configuration and wipe all historical logs? This cannot be undone.")) return;
-      
-      try {
-        const res = await fetch("/api/devices/delete?device_id=" + id, { method: "POST" });
-        const data = await res.json();
-        if (data.success) {
-          loadDevices();
-        }
-      } catch (e) {
-        alert("Failed to delete device logs.");
-      }
-    }
 
     // Initial load
     loadDevices();
