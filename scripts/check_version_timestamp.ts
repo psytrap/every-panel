@@ -1,6 +1,27 @@
 // scripts/check_version_timestamp.ts
 const configPath = new URL("../deno.json", import.meta.url);
 
+async function getMaxMtime(dirPath: string): Promise<Date> {
+  let maxDate = new Date(0);
+  try {
+    for await (const entry of Deno.readDir(dirPath)) {
+      const fullPath = `${dirPath}/${entry.name}`;
+      if (entry.isDirectory) {
+        const subMax = await getMaxMtime(fullPath);
+        if (subMax > maxDate) maxDate = subMax;
+      } else if (entry.isFile) {
+        const stat = await Deno.stat(fullPath);
+        if (stat.mtime && stat.mtime > maxDate) {
+          maxDate = stat.mtime;
+        }
+      }
+    }
+  } catch {
+    // Directory might not exist or be inaccessible
+  }
+  return maxDate;
+}
+
 try {
   const configText = await Deno.readTextFile(configPath);
   const config = JSON.parse(configText);
@@ -20,7 +41,7 @@ try {
 
   const [_, year, month, day, hours, minutes] = match;
   
-  // Create local date object matching Deno host local timezone configuration
+  // Create local date object matching timezone configuration
   const releaseDate = new Date(
     Number(year),
     Number(month) - 1,
@@ -29,18 +50,30 @@ try {
     Number(minutes)
   );
 
-  const now = new Date();
-  const diffMs = Math.abs(now.getTime() - releaseDate.getTime());
-  const diffMinutes = diffMs / (1000 * 60);
+  // Scan project directories for latest file modification time
+  const srcMax = await getMaxMtime("./src");
+  const publicMax = await getMaxMtime("./public");
+  const testsMax = await getMaxMtime("./tests");
+  const maxMtime = new Date(Math.max(srcMax.getTime(), publicMax.getTime(), testsMax.getTime()));
 
-  // Enforce a maximum drift of 10 minutes
-  if (diffMinutes > 10) {
-    console.error(`❌ Error: releaseDate in deno.json (${releaseDateStr}) is out of date by ${Math.round(diffMinutes)} minutes!`);
-    console.error("👉 Please run 'deno task version-update', stage the file ('git add deno.json'), and try committing again.");
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const maxMtimeStr = `${maxMtime.getFullYear()}-${pad(maxMtime.getMonth() + 1)}-${pad(maxMtime.getDate())} ${pad(maxMtime.getHours())}:${pad(maxMtime.getMinutes())}`;
+
+  console.log("--------------------------------------------------");
+  console.log(`🔍 Version Timestamp Verification:`);
+  console.log(`   - Found Date in deno.json:          ${releaseDateStr}`);
+  console.log(`   - Latest Source File Modification:   ${maxMtimeStr}`);
+  console.log("--------------------------------------------------");
+
+  // Add 60-second buffer to ignore minor clock drift / execution offsets
+  if (releaseDate.getTime() + 60000 < maxMtime.getTime()) {
+    console.error(`❌ Error: releaseDate in deno.json (${releaseDateStr}) is out of date!`);
+    console.error(`   A file was modified at ${maxMtimeStr} which is newer than deno.json.`);
+    console.error("👉 Run 'deno task version-update', stage changes ('git add deno.json'), then try committing again.");
     Deno.exit(1);
   }
 
-  console.log("✅ Version releaseDate is up-to-date.");
+  console.log("✅ Version releaseDate is up-to-date with all source changes.");
   Deno.exit(0);
 } catch (error) {
   console.error("❌ Error verifying releaseDate:", error.message);
