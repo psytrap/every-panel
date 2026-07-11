@@ -42,7 +42,7 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(loginHtml.includes("Mock Authentication Active"), true);
     assertEquals(loginHtml.includes("Developer Login"), true);
     // Verify version tag is present on the login UI
-    assertEquals(loginHtml.includes("v2.0.0 (2026-07-11)"), true);
+    assertEquals(loginHtml.includes("v2.0.0 (2026-07-11 09:52)"), true);
 
     // Test Case 2: Block login of unauthorized user (not in allowed list)
     console.log("[Test] 2. Verifying unauthorized user is blocked...");
@@ -92,7 +92,7 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     // Verify that the header contains the visual "Mock Auth" warning badge
     assertEquals(htmlText.includes("Mock Auth"), true);
     // Verify that the header contains the version tag
-    assertEquals(htmlText.includes("v2.0.0 (2026-07-11)"), true);
+    assertEquals(htmlText.includes("v2.0.0 (2026-07-11 09:52)"), true);
 
     // Verify stats diagnostics page is secure and loads correctly
     console.log("[Test] 4b. Verifying stats view and stats REST API load successfully...");

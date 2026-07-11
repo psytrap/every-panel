@@ -222,7 +222,7 @@ async function handler(req: Request): Promise<Response> {
     let dbGetTime = 0;
 
     const devicesList = [];
-    const prefix = pk("device");
+    const prefix = pk("registry");
     const list = kv.list({ prefix });
     const seenIds = new Set<string>();
 
@@ -339,6 +339,7 @@ async function handler(req: Request): Promise<Response> {
     await kv.delete(pk("device", deviceId, "ui_definition"));
     await kv.delete(pk("device", deviceId, "latest"));
     await kv.delete(pk("device", deviceId, "status"));
+    await kv.delete(pk("registry", deviceId));
 
     const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
     for await (const entry of historyIter) {

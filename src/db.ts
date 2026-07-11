@@ -43,6 +43,7 @@ export async function saveUIDefinition(deviceId: string, layoutDef: Record<strin
     layoutDef,
     timestamp: Date.now()
   });
+  await kv.set(pk("registry", deviceId), true);
 }
 
 export async function getUIDefinition(deviceId: string): Promise<Record<string, unknown> | null> {
@@ -57,6 +58,7 @@ export async function getUIDefinition(deviceId: string): Promise<Record<string, 
 export async function saveLatestTelemetry(deviceId: string, data: Record<string, unknown>) {
   const timestamp = Date.now();
   await kv.set(pk("device", deviceId, "latest"), { data, timestamp });
+  await kv.set(pk("registry", deviceId), true);
   
   const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
   const ttlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7;
