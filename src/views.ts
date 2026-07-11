@@ -1,4 +1,5 @@
 import { DISABLE_AUTH, MOCK_AUTH } from "./db.ts";
+import denoConfig from "../deno.json" with { type: "json" };
 
 export function getLoginHtml(): string {
   return `
@@ -12,9 +13,9 @@ export function getLoginHtml(): string {
   <link rel="stylesheet" href="/public/style.css">
 </head>
 <body>
-  <div class="login-container">
+    <div class="login-container">
     <div class="login-card glass">
-      <h2>Every-Panel Hub</h2>
+      <h2>Every-Panel Hub <span style="font-size:12px; font-weight:400; opacity:0.6; vertical-align:middle; margin-left:8px;">v${denoConfig.version} (${denoConfig.releaseDate})</span></h2>
       <p>${MOCK_AUTH ? "Developer testing login interface" : "Secure login with your GitHub account"}</p>
       
       ${MOCK_AUTH ? `
@@ -62,6 +63,7 @@ export function getPanelHtml(): string {
       <h1>
         <svg style="width:24px;height:24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M19,5V19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M14,17H7V15H14V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
         <span id="app-title">Every-Panel</span>
+        <span style="font-size:11px; opacity:0.5; font-weight:400; margin-left:6px; vertical-align:middle; display:inline-block;">v${denoConfig.version} (${denoConfig.releaseDate})</span>
         ${MOCK_AUTH ? '<span style="font-size:10px; background:#d97706; color:white; padding:2px 8px; border-radius:9999px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:8px; vertical-align:middle; display:inline-block;">Mock Auth</span>' : ''}
       </h1>
     </div>
@@ -123,6 +125,7 @@ export function getDevicesDirectoryHtml(): string {
       <h1>
         <svg style="width:24px;height:24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/></svg>
         <span>Every-Panel Hub Directory</span>
+        <span style="font-size:11px; opacity:0.5; font-weight:400; margin-left:6px; vertical-align:middle; display:inline-block;">v${denoConfig.version} (${denoConfig.releaseDate})</span>
         ${MOCK_AUTH ? '<span style="font-size:10px; background:#d97706; color:white; padding:2px 8px; border-radius:9999px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:8px; vertical-align:middle; display:inline-block;">Mock Auth</span>' : ''}
       </h1>
     </div>

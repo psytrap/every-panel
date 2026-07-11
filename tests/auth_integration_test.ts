@@ -41,6 +41,8 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     const loginHtml = await loginPageRes.text();
     assertEquals(loginHtml.includes("Mock Authentication Active"), true);
     assertEquals(loginHtml.includes("Developer Login"), true);
+    // Verify version tag is present on the login UI
+    assertEquals(loginHtml.includes("v2.0.0 (2026-07-11)"), true);
 
     // Test Case 2: Block login of unauthorized user (not in allowed list)
     console.log("[Test] 2. Verifying unauthorized user is blocked...");
@@ -89,6 +91,8 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(htmlText.includes("Device Directory"), true);
     // Verify that the header contains the visual "Mock Auth" warning badge
     assertEquals(htmlText.includes("Mock Auth"), true);
+    // Verify that the header contains the version tag
+    assertEquals(htmlText.includes("v2.0.0 (2026-07-11)"), true);
 
     // Test Case 5: Logout invalidates and deletes the session
     console.log("[Test] 5. Verifying logout routine clears session state...");
