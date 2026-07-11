@@ -94,6 +94,24 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     // Verify that the header contains the version tag
     assertEquals(htmlText.includes("v2.0.0 (2026-07-11)"), true);
 
+    // Verify stats diagnostics page is secure and loads correctly
+    console.log("[Test] 4b. Verifying stats view and stats REST API load successfully...");
+    const statsViewRes = await fetch(`${baseUrl}/devices/stats?device_id=test-device`, {
+      headers: { "Cookie": `every_panel_session=${sessionId}` }
+    });
+    assertEquals(statsViewRes.status, 200);
+    const statsHtml = await statsViewRes.text();
+    assertEquals(statsHtml.includes("Storage & Logs Diagnostics"), true);
+
+    const statsApiRes = await fetch(`${baseUrl}/api/devices/stats?device_id=test-device`, {
+      headers: { "Cookie": `every_panel_session=${sessionId}` }
+    });
+    assertEquals(statsApiRes.status, 200);
+    const statsJson = await statsApiRes.json();
+    assertEquals(statsJson.deviceId, "test-device");
+    assertEquals(typeof statsJson.historyCount, "number");
+    assertEquals(typeof statsJson.historyBytes, "number");
+
     // Test Case 5: Logout invalidates and deletes the session
     console.log("[Test] 5. Verifying logout routine clears session state...");
     const logoutRes = await fetch(`${baseUrl}/logout`, {

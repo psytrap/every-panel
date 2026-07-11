@@ -147,6 +147,9 @@ export function getDevicesDirectoryHtml(): string {
       <div id="device-list-container" class="layout-row">
         <!-- Rendered list items -->
       </div>
+
+      <!-- Telemetry Diagnostics Badge Panel -->
+      <div id="telemetry-diagnostics" class="directory-summary" style="display:none; margin-top:20px; font-size:12px; opacity:0.8; justify-content:center; gap:16px;"></div>
     </div>
   </main>
 
@@ -155,3 +158,155 @@ export function getDevicesDirectoryHtml(): string {
 </html>
   `;
 }
+
+export function getStatsPageHtml(deviceId: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage Stats - Every-Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  <header class="glass">
+    <div class="header-title">
+      <h1>
+        <svg style="width:24px;height:24px;" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/></svg>
+        <span>Storage & Logs Diagnostics</span>
+        <span style="font-size:11px; opacity:0.5; font-weight:400; margin-left:6px; vertical-align:middle; display:inline-block;">v${denoConfig.version} (${denoConfig.releaseDate})</span>
+        ${MOCK_AUTH ? '<span style="font-size:10px; background:#d97706; color:white; padding:2px 8px; border-radius:9999px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:8px; vertical-align:middle; display:inline-block;">Mock Auth</span>' : ''}
+      </h1>
+    </div>
+    <div class="header-controls">
+      <a href="/devices" class="btn-action" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">Back to Directory</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="directory-container" style="max-width:800px;">
+      <div class="glass" style="padding:30px; border-radius:16px;">
+        <h2 id="device-title" style="font-size:22px; font-weight:600; margin-bottom:4px;">Loading Device Storage Details...</h2>
+        <p id="device-uuid" style="font-size:13px; color:var(--text-secondary); font-family:monospace; margin-bottom:24px;">${deviceId}</p>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:30px;">
+          <div class="glass" style="padding:20px; text-align:center; border-radius:12px; background:rgba(255,255,255,0.02);">
+            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Total Database Entries</div>
+            <div id="stat-count" style="font-size:32px; font-weight:700; color:var(--text-primary);">--</div>
+          </div>
+          <div class="glass" style="padding:20px; text-align:center; border-radius:12px; background:rgba(255,255,255,0.02);">
+            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Estimated Footprint</div>
+            <div id="stat-bytes" style="font-size:32px; font-weight:700; color:var(--text-primary);">--</div>
+          </div>
+          <div class="glass" style="padding:20px; text-align:center; border-radius:12px; background:rgba(255,255,255,0.02);">
+            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Retention Policy</div>
+            <div id="stat-retention" style="font-size:32px; font-weight:700; color:var(--text-primary);">--</div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:20px; border-top: 1px solid var(--border-color); padding-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h3 style="font-size:16px; font-weight:500; margin-bottom:4px;">Configure Log Ingestion Retention</h3>
+              <p style="font-size:13px; color:var(--text-secondary);">Set when database telemetry entries automatically expire from Deno KV.</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <select id="retention-select" style="padding:8px 12px; font-size:14px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); cursor:pointer; font-family:'Outfit', sans-serif;">
+                <option value="1">1 Day</option>
+                <option value="7">7 Days</option>
+                <option value="30">30 Days</option>
+                <option value="365">1 Year</option>
+                <option value="0">Infinite</option>
+              </select>
+              <button onclick="updateRetention()" class="btn-action active-lease" style="padding:8px 16px;">Apply Policy</button>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-top: 1px solid rgba(255,255,255,0.05); padding-top:20px;">
+            <div>
+              <h3 style="font-size:16px; font-weight:500; margin-bottom:4px; color:var(--danger-color);">Danger Zone</h3>
+              <p style="font-size:13px; color:var(--text-secondary);">Purges all historical logs and layout schemas for this device.</p>
+            </div>
+            <button onclick="wipeStorage()" class="btn-delete" style="padding:10px 20px;">Wipe Device Storage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const deviceId = "${deviceId}";
+
+    async function loadStats() {
+      try {
+        const res = await fetch(\`/api/devices/stats?device_id=\${deviceId}\`);
+        const stats = await res.json();
+        
+        document.getElementById("device-title").innerText = stats.title;
+        document.getElementById("stat-count").innerText = stats.historyCount.toLocaleString();
+        document.getElementById("stat-bytes").innerText = formatBytes(stats.historyBytes);
+        document.getElementById("stat-retention").innerText = formatRetention(stats.historyTtlDays);
+        document.getElementById("retention-select").value = stats.historyTtlDays;
+      } catch (e) {
+        document.getElementById("device-title").innerText = "Error loading stats";
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return "0 Bytes";
+      const k = 1024;
+      const sizes = ["Bytes", "KB", "MB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    }
+
+    function formatRetention(days) {
+      if (days === 0) return "Infinite";
+      if (days === 1) return "1 Day";
+      if (days === 365) return "1 Year";
+      return days + " Days";
+    }
+
+    async function updateRetention() {
+      const days = document.getElementById("retention-select").value;
+      try {
+        const res = await fetch("/api/devices/settings", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceId, historyTtlDays: Number(days) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("Retention policy updated successfully!");
+          loadStats();
+        } else {
+          alert("Failed: " + data.error);
+        }
+      } catch (e) {
+        alert("Failed to update policy.");
+      }
+    }
+
+    async function wipeStorage() {
+      if (!confirm("Are you sure you want to completely wipe all historical logs and configuration for this device?")) return;
+      try {
+        const res = await fetch(\`/api/devices/delete?device_id=\${deviceId}\`, { method: "POST" });
+        const data = await res.json();
+        if (data.success) {
+          alert("Device storage wiped successfully!");
+          window.location.href = "/devices";
+        }
+      } catch (e) {
+        alert("Failed to wipe storage.");
+      }
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>
+  `;
+}
+

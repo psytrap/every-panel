@@ -18,7 +18,8 @@ import {
 import {
   getPanelHtml,
   getDevicesDirectoryHtml,
-  getLoginHtml
+  getLoginHtml,
+  getStatsPageHtml
 } from "./views.ts";
 import {
   handleWebSocketUpgrade
@@ -217,6 +218,9 @@ async function handler(req: Request): Promise<Response> {
 
   // REST API: Get all registered devices in KV store
   if (path === "/api/devices") {
+    const tStart = performance.now();
+    let dbGetTime = 0;
+
     const devicesList = [];
     const prefix = pk("device");
     const list = kv.list({ prefix });
@@ -228,8 +232,10 @@ async function handler(req: Request): Promise<Response> {
       if (typeof deviceId !== "string" || seenIds.has(deviceId)) continue;
       seenIds.add(deviceId);
 
+      const tGetStart = performance.now();
       const uiDef = await getUIDefinition(deviceId);
       const statusRes = await kv.get<GlobalDeviceStatus>(pk("device", deviceId, "status"));
+      dbGetTime += performance.now() - tGetStart;
 
       // Determine state - default to detached if not found
       let state = "detached";
@@ -238,40 +244,32 @@ async function handler(req: Request): Promise<Response> {
         
         // Dynamic stale state check
         if (state !== "detached" && state !== "disconnected") {
+          const tTeleStart = performance.now();
           const lastTelemetry = await getLatestTelemetry(deviceId);
+          dbGetTime += performance.now() - tTeleStart;
+
           if (lastTelemetry && (Date.now() - lastTelemetry.timestamp > 10000)) {
             state = "stale";
           }
         }
       }
 
-      // Calculate history stats footprint
-      let historyCount = 0;
-      let historyBytes = 0;
-      const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
-      for await (const entry of historyIter) {
-        historyCount++;
-        const serialized = JSON.stringify(entry.value);
-        historyBytes += serialized.length + 30; // payload size + indexing overhead
-      }
-
-      // Load retention TTL setting
-      const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
-      const historyTtlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7; // default to 7 days
-
       devicesList.push({
         deviceId,
         title: uiDef ? (uiDef as any).payload?.title || "Unnamed Device" : "Unnamed Device",
         state,
-        controllerSessionId: statusRes.value ? statusRes.value.controllerSessionId : null,
-        historyCount,
-        historyBytes,
-        historyTtlDays
+        controllerSessionId: statusRes.value ? statusRes.value.controllerSessionId : null
       });
     }
 
+    const tTotal = performance.now() - tStart;
+    console.log(`[Telemetry] /api/devices processed in ${tTotal.toFixed(1)}ms (gets: ${dbGetTime.toFixed(1)}ms)`);
+
     return new Response(JSON.stringify(devicesList), {
-      headers: { "content-type": "application/json; charset=utf-8" },
+      headers: { 
+        "content-type": "application/json; charset=utf-8",
+        "Server-Timing": `db_gets;dur=${dbGetTime.toFixed(1)};desc="KV Gets", total;dur=${tTotal.toFixed(1)};desc="Total Time"`
+      },
     });
   }
 
@@ -288,6 +286,46 @@ async function handler(req: Request): Promise<Response> {
     
     return new Response(JSON.stringify({ success: true }), {
       headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+
+  // Render separate dedicated Storage Stats & Log Diagnostics page
+  if (path === "/devices/stats") {
+    const deviceId = url.searchParams.get("device_id");
+    if (!deviceId) {
+      return Response.redirect(`${url.origin}/devices`, 302);
+    }
+    return new Response(getStatsPageHtml(deviceId), { headers: { "content-type": "text/html; charset=utf-8" } });
+  }
+
+  // REST API: Get stats for a single device on-demand
+  if (path === "/api/devices/stats") {
+    const deviceId = url.searchParams.get("device_id");
+    if (!deviceId) {
+      return new Response(JSON.stringify({ success: false, error: "Missing device_id" }), { status: 400 });
+    }
+
+    const uiDef = await getUIDefinition(deviceId);
+    const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
+    const historyTtlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7;
+
+    let historyCount = 0;
+    let historyBytes = 0;
+    const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
+    for await (const entry of historyIter) {
+      historyCount++;
+      const serialized = JSON.stringify(entry.value);
+      historyBytes += serialized.length + 30;
+    }
+
+    return new Response(JSON.stringify({
+      deviceId,
+      title: uiDef ? (uiDef as any).payload?.title || "Unnamed Device" : "Unnamed Device",
+      historyCount,
+      historyBytes,
+      historyTtlDays
+    }), {
+      headers: { "content-type": "application/json; charset=utf-8" }
     });
   }
 
