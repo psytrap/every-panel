@@ -84,3 +84,43 @@
 
     // Initial load
     loadDevices();
+
+    function showAddDeviceModal() {
+      document.getElementById("add-device-input").value = "";
+      document.getElementById("add-device-modal").style.display = "block";
+      document.getElementById("modal-backdrop").style.display = "block";
+      document.getElementById("add-device-input").focus();
+    }
+
+    function hideAddDeviceModal() {
+      document.getElementById("add-device-modal").style.display = "none";
+      document.getElementById("modal-backdrop").style.display = "none";
+    }
+
+    async function submitAddDevice() {
+      const input = document.getElementById("add-device-input").value.trim();
+      if (!input) return;
+
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!UUID_REGEX.test(input)) {
+        alert("Please enter a valid UUID format (e.g. e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d).");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/devices/add", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceId: input })
+        });
+        const data = await res.json();
+        if (data.success) {
+          hideAddDeviceModal();
+          loadDevices();
+        } else {
+          alert("Error: " + data.error);
+        }
+      } catch (e) {
+        alert("Failed to register device.");
+      }
+    }

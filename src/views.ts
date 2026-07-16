@@ -139,7 +139,10 @@ export function getDevicesDirectoryHtml(): string {
     <div class="directory-container">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h2 style="font-size:18px; font-weight:500;">Registered IoT Nodes</h2>
-        <button onclick="loadDevices()" class="btn-action">Refresh List</button>
+        <div style="display:flex; gap:10px;">
+          <button onclick="showAddDeviceModal()" class="btn-action active-lease">Register Device</button>
+          <button onclick="loadDevices()" class="btn-action">Refresh List</button>
+        </div>
       </div>
 
       <div id="directory-summary-bar" class="directory-summary" style="display:none;"></div>
@@ -150,6 +153,19 @@ export function getDevicesDirectoryHtml(): string {
 
       <!-- Telemetry Diagnostics Badge Panel -->
       <div id="telemetry-diagnostics" class="directory-summary" style="display:none; margin-top:20px; font-size:12px; opacity:0.8; justify-content:center; gap:16px;"></div>
+
+      <!-- Add Device Modal -->
+      <div id="add-device-modal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:450px; z-index:1000; padding:24px; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <h3 style="font-size:18px; font-weight:600; margin-bottom:12px; color:var(--text-primary);">Register New Device</h3>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">Enter a unique UUID to authorize this IoT device to connect to the panel dashboard.</p>
+        <input type="text" id="add-device-input" placeholder="e.g. e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d" style="width:100%; padding:10px 14px; margin-bottom:20px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
+        <div style="display:flex; justify-content:flex-end; gap:12px;">
+          <button onclick="hideAddDeviceModal()" class="btn-action" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); padding:8px 16px;">Cancel</button>
+          <button onclick="submitAddDevice()" class="btn-action active-lease" style="padding:8px 16px;">Register Device</button>
+        </div>
+      </div>
+      <!-- Backdrop -->
+      <div id="modal-backdrop" onclick="hideAddDeviceModal()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:999;"></div>
     </div>
   </main>
 

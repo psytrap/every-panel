@@ -7,7 +7,8 @@ import {
   getLatestTelemetry,
   COOKIE_NAME,
   GlobalDeviceStatus,
-  CommandMessage
+  CommandMessage,
+  isDeviceAuthorized
 } from "./db.ts";
 
 // Memory stores for active connections (local to this isolate instance)
@@ -101,7 +102,7 @@ export function broadcastLocalStatus(deviceId: string, state: string, controller
   }
 }
 
-export function handleWebSocketUpgrade(req: Request): Response {
+export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const role = url.searchParams.get("role"); // "device" or "client"
   const deviceId = url.searchParams.get("device_id") || "default";
@@ -110,6 +111,12 @@ export function handleWebSocketUpgrade(req: Request): Response {
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (deviceId !== "default" && !UUID_REGEX.test(deviceId)) {
     return new Response("Bad Request: Device ID must be a valid UUID format.", { status: 400 });
+  }
+
+  // Reject connection if the device ID is not pre-registered/authorized
+  const authorized = await isDeviceAuthorized(deviceId);
+  if (!authorized) {
+    return new Response("Unauthorized: This Device ID has not been registered in the dashboard system.", { status: 403 });
   }
 
   // Parse session from cookie headers to track the client

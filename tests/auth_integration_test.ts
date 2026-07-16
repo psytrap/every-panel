@@ -97,21 +97,37 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     // Verify that the header contains the version tag
     assertEquals(htmlText.includes(expectedVersion), true);
 
+    const testUuid = "e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d";
+
+    // Register the test device using the authenticated session
+    console.log("[Test] 4a. Registering test device via authenticated endpoint...");
+    const regRes = await fetch(`${baseUrl}/api/devices/add`, {
+      method: "POST",
+      headers: {
+        "Cookie": `every_panel_session=${sessionId}`,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ deviceId: testUuid })
+    });
+    assertEquals(regRes.status, 200);
+    const regJson = await regRes.json();
+    assertEquals(regJson.success, true);
+
     // Verify stats diagnostics page is secure and loads correctly
     console.log("[Test] 4b. Verifying stats view and stats REST API load successfully...");
-    const statsViewRes = await fetch(`${baseUrl}/devices/stats?device_id=test-device`, {
+    const statsViewRes = await fetch(`${baseUrl}/devices/stats?device_id=${testUuid}`, {
       headers: { "Cookie": `every_panel_session=${sessionId}` }
     });
     assertEquals(statsViewRes.status, 200);
     const statsHtml = await statsViewRes.text();
     assertEquals(statsHtml.includes("Storage & Logs Diagnostics"), true);
 
-    const statsApiRes = await fetch(`${baseUrl}/api/devices/stats?device_id=test-device`, {
+    const statsApiRes = await fetch(`${baseUrl}/api/devices/stats?device_id=${testUuid}`, {
       headers: { "Cookie": `every_panel_session=${sessionId}` }
     });
     assertEquals(statsApiRes.status, 200);
     const statsJson = await statsApiRes.json();
-    assertEquals(statsJson.deviceId, "test-device");
+    assertEquals(statsJson.deviceId, testUuid);
     assertEquals(typeof statsJson.historyCount, "number");
     assertEquals(typeof statsJson.historyBytes, "number");
 

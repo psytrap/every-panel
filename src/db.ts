@@ -37,13 +37,26 @@ export interface GlobalDeviceStatus {
   controllerSessionId: string | null;
 }
 
+export async function isDeviceAuthorized(deviceId: string): Promise<boolean> {
+  if (deviceId === "default") return true;
+  const res = await kv.get(pk("device_authorized", deviceId));
+  return res.value !== null;
+}
+
+export async function authorizeDevice(deviceId: string): Promise<void> {
+  await kv.set(pk("device_authorized", deviceId), { registeredAt: Date.now() });
+}
+
+export async function deauthorizeDevice(deviceId: string): Promise<void> {
+  await kv.delete(pk("device_authorized", deviceId));
+}
+
 // Database Helper Operations
 export async function saveUIDefinition(deviceId: string, layoutDef: Record<string, unknown>) {
   await kv.set(pk("device", deviceId, "ui_definition"), {
     layoutDef,
     timestamp: Date.now()
   });
-  await kv.set(pk("registry", deviceId), true);
 }
 
 export async function getUIDefinition(deviceId: string): Promise<Record<string, unknown> | null> {
@@ -58,7 +71,6 @@ export async function getUIDefinition(deviceId: string): Promise<Record<string, 
 export async function saveLatestTelemetry(deviceId: string, data: Record<string, unknown>) {
   const timestamp = Date.now();
   await kv.set(pk("device", deviceId, "latest"), { data, timestamp });
-  await kv.set(pk("registry", deviceId), true);
   
   const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
   const ttlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7;

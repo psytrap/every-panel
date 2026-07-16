@@ -13,7 +13,9 @@ import {
   getHistory,
   getLatestTelemetry,
   getUIDefinition,
-  GlobalDeviceStatus
+  GlobalDeviceStatus,
+  authorizeDevice,
+  deauthorizeDevice
 } from "./db.ts";
 import {
   getPanelHtml,
@@ -51,7 +53,7 @@ async function handler(req: Request): Promise<Response> {
 
   // 1. Handle WebSockets upgrade
   if (path === "/ws") {
-    return handleWebSocketUpgrade(req);
+    return await handleWebSocketUpgrade(req);
   }
 
   // 2. Auth Cookie checking (Bypassed if DISABLE_AUTH is set to true)
@@ -222,7 +224,7 @@ async function handler(req: Request): Promise<Response> {
     let dbGetTime = 0;
 
     const devicesList = [];
-    const prefix = pk("registry");
+    const prefix = pk("device_authorized");
     const list = kv.list({ prefix });
     const seenIds = new Set<string>();
 
@@ -329,6 +331,32 @@ async function handler(req: Request): Promise<Response> {
     });
   }
 
+  // REST API: Authorize a new device ID
+  if (path === "/api/devices/add" && req.method === "POST") {
+    try {
+      const body = await req.json();
+      const { deviceId } = body;
+      
+      if (!deviceId) {
+        return new Response(JSON.stringify({ success: false, error: "Missing deviceId" }), { status: 400 });
+      }
+
+      // Validate device ID matches UUID format
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!UUID_REGEX.test(deviceId)) {
+        return new Response(JSON.stringify({ success: false, error: "Device ID must be a valid UUID format." }), { status: 400 });
+      }
+
+      await authorizeDevice(deviceId);
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500 });
+    }
+  }
+
   // REST API: Wipe configuration and logs for a device
   if (path === "/api/devices/delete" && req.method === "POST") {
     const deviceId = url.searchParams.get("device_id");
@@ -339,7 +367,7 @@ async function handler(req: Request): Promise<Response> {
     await kv.delete(pk("device", deviceId, "ui_definition"));
     await kv.delete(pk("device", deviceId, "latest"));
     await kv.delete(pk("device", deviceId, "status"));
-    await kv.delete(pk("registry", deviceId));
+    await deauthorizeDevice(deviceId);
 
     const historyIter = kv.list({ prefix: pk("device", deviceId, "history") });
     for await (const entry of historyIter) {

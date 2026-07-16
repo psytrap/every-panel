@@ -43,6 +43,16 @@ Deno.test({
 
     const deviceId = "e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d";
     
+    // Authorize the device in the test server instance
+    const authRes = await fetch(`http://localhost:${port}/api/devices/add`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ deviceId })
+    });
+    assertEquals(authRes.status, 200);
+    const authJson = await authRes.json();
+    assertEquals(authJson.success, true);
+    
     // Connect Mock WebSockets
     const devUrl = `ws://localhost:${port}/ws?role=device&device_id=${deviceId}`;
     const clientAUrl = `ws://localhost:${port}/ws?role=client&device_id=${deviceId}&tab_id=tab-A`;

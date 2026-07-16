@@ -283,3 +283,5 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
 *   [ ] **Refine Telemetry History Charts**: Enhance the historical line chart visualizer in the panel UI, adding custom time-range selectors (1 hour, 24 hours, 7 days), zooming and panning features, multi-metric axis support, and clean hovering tooltips.
 *   [ ] **Server-Side Telemetry Downsampling & Aggregation Policy**: Implement a configurable storage interval policy on the server to downsample historical database logs. Instead of writing every raw telemetry message to Deno KV, buffer incoming data points over a time interval (e.g., 1 minute or 5 minutes) and write a single consolidated data point storing the `min`, `max`, `average`, and `latest` values for each sensor during that time slice.
 *   [ ] **Characterise Deno Deploy reliablity**
+*   [ ] **Home Assistant Integration**: Support integration with Home Assistant (via MQTT discovery or a custom HTTP/WebSocket API) to expose device entities and telemetry streams dynamically.
+*   [ ] **Live State Notification**: Notification is sent to the device in case a UI is conneted to it.
