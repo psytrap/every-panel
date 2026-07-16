@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "releaseDate": "2026-07-16 14:18",
+  "releaseDate": "2026-07-16 14:23",
   "tasks": {
     "version-update": "deno run --allow-read --allow-write scripts/update_release_date.ts",
     "version-check": "deno run --allow-read scripts/check_version_timestamp.ts",

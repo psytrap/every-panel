@@ -157,8 +157,12 @@ export function getDevicesDirectoryHtml(): string {
       <!-- Add Device Modal -->
       <div id="add-device-modal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:450px; z-index:1000; padding:24px; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
         <h3 style="font-size:18px; font-weight:600; margin-bottom:12px; color:var(--text-primary);">Register New Device</h3>
-        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">Enter a unique UUID to authorize this IoT device to connect to the panel dashboard.</p>
-        <input type="text" id="add-device-input" placeholder="e.g. e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d" style="width:100%; padding:10px 14px; margin-bottom:20px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">Enter a unique UUID to authorize this IoT device to connect to the panel dashboard.</p>
+        <input type="text" id="add-device-input" placeholder="e.g. e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d" style="width:100%; padding:10px 14px; margin-bottom:16px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
+        
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">Device Key (Secret passcode, optional - will auto-generate if empty):</p>
+        <input type="text" id="add-device-key-input" placeholder="e.g. secret_passcode_123" style="width:100%; padding:10px 14px; margin-bottom:20px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
+        
         <div style="display:flex; justify-content:flex-end; gap:12px;">
           <button onclick="hideAddDeviceModal()" class="btn-action" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); padding:8px 16px;">Cancel</button>
           <button onclick="submitAddDevice()" class="btn-action active-lease" style="padding:8px 16px;">Register Device</button>

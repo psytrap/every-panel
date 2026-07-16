@@ -87,6 +87,7 @@
 
     function showAddDeviceModal() {
       document.getElementById("add-device-input").value = "";
+      document.getElementById("add-device-key-input").value = "";
       document.getElementById("add-device-modal").style.display = "block";
       document.getElementById("modal-backdrop").style.display = "block";
       document.getElementById("add-device-input").focus();
@@ -107,11 +108,13 @@
         return;
       }
 
+      const keyInput = document.getElementById("add-device-key-input").value.trim();
+
       try {
         const res = await fetch("/api/devices/add", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ deviceId: input })
+          body: JSON.stringify({ deviceId: input, deviceKey: keyInput || undefined })
         });
         const data = await res.json();
         if (data.success) {
