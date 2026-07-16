@@ -41,10 +41,10 @@ if (wsChannel) {
   };
 }
 
-// Every 30s: ping all local UI clients watching each locally-connected device,
+// Every 10s: ping all local UI clients watching each locally-connected device,
 // then notify the device on viewer presence state changes.
 // PING_INTERVAL_MS env var allows tests to override this to a shorter value.
-const PING_INTERVAL_MS = parseInt(Deno.env.get("PING_INTERVAL_MS") ?? "30000");
+const PING_INTERVAL_MS = parseInt(Deno.env.get("PING_INTERVAL_MS") ?? "10000");
 setInterval(async () => {
   const now = Date.now();
 

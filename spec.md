@@ -19,6 +19,7 @@ This document specifies the architecture, data schemas, user interface design, a
     *   `detached`: The server is online, but the physical IoT device is disconnected/offline. Inputs are disabled.
     *   `initializing`: Server is connected and device is online, but the layout configuration definition hasn't been uploaded/processed yet. Badge pulses orange.
     *   `stale`: The device is online, but no telemetry packet has been received for more than 10 seconds (lagging link). Badge pulses pink.
+        > **TODO**: The 10s stale threshold is hardcoded on the client. Redesign so it is driven by the server's ping interval (`PING_INTERVAL_MS`), e.g. by including it in the `init` message, so the stale window scales automatically with the heartbeat configuration.
     *   `fault`: The device has reported an error/fault message in its telemetry stream. Badge pulses rapid red, showing the error description.
     *   `live`: The IoT device is connected. Browser clients can view telemetry but cannot control outputs (view-only mode).
     *   `control`: The IoT device is connected, and one client holds the exclusive lease. Only this client is permitted to write inputs.
