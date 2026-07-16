@@ -111,16 +111,17 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   // Validate device ID matches UUID format (except for the 'default' offline panel placeholder)
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (deviceId !== "default" && !UUID_REGEX.test(deviceId)) {
+    console.warn(`[WS] Connection upgrade rejected: Invalid Device ID format: "${deviceId}"`);
     return new Response("Bad Request: Device ID must be a valid UUID format.", { status: 400 });
   }
 
   // Reject connection if the device ID is not pre-registered/authorized
   const authorized = await isDeviceAuthorized(deviceId);
   if (!authorized) {
+    console.warn(`[WS] Connection upgrade rejected: Device ID "${deviceId}" is not authorized/registered.`);
     return new Response("Unauthorized: This Device ID has not been registered in the dashboard system.", { status: 403 });
   }
 
-  // If a physical device is connecting, it must supply the correct matching device key
   // If a physical device is connecting, it must supply the correct matching device key
   const protocols = req.headers.get("sec-websocket-protocol") || "";
   const subprotocolKey = protocols.split(",")
@@ -131,6 +132,7 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
     const deviceKey = req.headers.get("X-Device-Key") || subprotocolKey || url.searchParams.get("device_key") || "";
     const keyMatches = await checkDeviceKey(deviceId, deviceKey);
     if (!keyMatches) {
+      console.warn(`[WS] Connection upgrade rejected: Key mismatch or key missing for Device ID "${deviceId}".`);
       return new Response("Unauthorized: Invalid or missing device key.", { status: 403 });
     }
   }

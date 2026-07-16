@@ -54,21 +54,20 @@ Deno.test({
     const authJson = await authRes.json();
     assertEquals(authJson.success, true);
     
-    // Connect Mock WebSockets
+    // Connect Mock WebSockets: Connect clients first to ensure they are registered for broadcasts
     const devUrl = `ws://localhost:${port}/ws?role=device&device_id=${deviceId}`;
     const clientAUrl = `ws://localhost:${port}/ws?role=client&device_id=${deviceId}&tab_id=tab-A`;
     const clientBUrl = `ws://localhost:${port}/ws?role=client&device_id=${deviceId}&tab_id=tab-B`;
 
-    const deviceWs = new WebSocket(devUrl, ["every-panel-device-auth", deviceKey]);
     const clientAWs = new WebSocket(clientAUrl);
     const clientBWs = new WebSocket(clientBUrl);
-
-    // Await connection openers
     await Promise.all([
-      new Promise(resolve => deviceWs.onopen = resolve),
       new Promise(resolve => clientAWs.onopen = resolve),
       new Promise(resolve => clientBWs.onopen = resolve),
     ]);
+
+    const deviceWs = new WebSocket(devUrl, ["every-panel-device-auth", deviceKey]);
+    await new Promise(resolve => deviceWs.onopen = resolve);
 
     try {
       console.log("\n[Test] WebSockets connected. Verifying system state loops...");

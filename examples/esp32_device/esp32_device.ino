@@ -164,8 +164,13 @@ String serialReadLine() {
 
 // Prompts the user for a value, showing a default. Returns default if input is empty.
 String serialPrompt(const char* label, const String& defaultVal) {
+  bool isSecret = (strcmp(label, "WiFi Password") == 0 || strcmp(label, "Device Key") == 0);
   if (defaultVal.length() > 0) {
-    Serial.printf("  %s [%s]: ", label, defaultVal.c_str());
+    if (isSecret) {
+      Serial.printf("  %s [********]: ", label);
+    } else {
+      Serial.printf("  %s [%s]: ", label, defaultVal.c_str());
+    }
   } else {
     Serial.printf("  %s: ", label);
   }
@@ -218,6 +223,16 @@ String getBuiltinUUID() {
   return String(uuidBuf);
 }
 
+String generateRandomKey() {
+  uint8_t randomBytes[8];
+  esp_fill_random(randomBytes, 8);
+  char keyBuf[17];
+  snprintf(keyBuf, sizeof(keyBuf), "%02x%02x%02x%02x%02x%02x%02x%02x",
+           randomBytes[0], randomBytes[1], randomBytes[2], randomBytes[3],
+           randomBytes[4], randomBytes[5], randomBytes[6], randomBytes[7]);
+  return String(keyBuf);
+}
+
 void runSerialProvisioning() {
   Serial.println();
   Serial.println("╔══════════════════════════════════════╗");
@@ -233,8 +248,31 @@ void runSerialProvisioning() {
   
   String defaultUUID = cfgDeviceId.length() > 0 ? cfgDeviceId : getBuiltinUUID();
   cfgDeviceId = serialPrompt("Device UUID", defaultUUID);
-  
-  cfgDeviceKey = serialPrompt("Device Key", cfgDeviceKey);
+
+  if (cfgDeviceKey.length() > 0) {
+    Serial.println("  Device Key Settings:");
+    Serial.print("  Type 'reset' to generate a new Device Key (press Enter to keep current): ");
+    String keyInput = serialReadLine();
+    keyInput.trim();
+    if (keyInput.equalsIgnoreCase("reset")) {
+      cfgDeviceKey = generateRandomKey();
+      Serial.println();
+      Serial.println("┌────────────────────────────────────────────────────────┐");
+      Serial.println("│  [SECURITY] GENERATED NEW DEVICE KEY:                  │");
+      Serial.printf("│  >>>  %s  <<<                 │\n", cfgDeviceKey.c_str());
+      Serial.println("│  Copy this key and register it on the dashboard.       │");
+      Serial.println("└────────────────────────────────────────────────────────┘");
+    }
+  } else {
+    // First setup: force key generation
+    cfgDeviceKey = generateRandomKey();
+    Serial.println();
+    Serial.println("┌────────────────────────────────────────────────────────┐");
+    Serial.println("│  [SECURITY] GENERATED NEW DEVICE KEY (FIRST SETUP):    │");
+    Serial.printf("│  >>>  %s  <<<                 │\n", cfgDeviceKey.c_str());
+    Serial.println("│  Copy this key and register it on the dashboard.       │");
+    Serial.println("└────────────────────────────────────────────────────────┘");
+  }
  
   saveConfig();
 }
@@ -389,6 +427,10 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       layoutSent = false;
       break;
 
+    case WStype_ERROR:
+      Serial.printf("[WS] Connection Error! Payload: %s\n", payload ? (const char*)payload : "None");
+      break;
+
     case WStype_CONNECTED:
       Serial.printf("[WS] Connected to hub: %s\n", cfgHubUrl.c_str());
       connected = true;
@@ -488,6 +530,13 @@ void setup() {
   } else {
     wsPath += "&role=device&device_id=" + cfgDeviceId;
   }
+
+  // Print WebSocket connection diagnostic details
+  Serial.println("[WS] Target Parameter Diagnostics:");
+  Serial.printf("  - Host: %s | Port: %d | Protocol: %s\n", host.c_str(), port, protocol.c_str());
+  Serial.printf("  - Device UUID: %s\n", cfgDeviceId.c_str());
+  Serial.printf("  - Device Key Length: %d chars\n", cfgDeviceKey.length());
+  Serial.printf("  - Request Headers Extra: X-Device-Key: [len: %d]\n", cfgDeviceKey.length());
 
   // Initialize WebSocket connection
   cfgExtraHeaders = "X-Device-Key: " + cfgDeviceKey + "\r\n";
