@@ -85,7 +85,6 @@ String cfgPass;
 String cfgHubUrl;
 String cfgDeviceId;
 String cfgDeviceKey;
-String cfgExtraHeaders;
 
 // ==========================================
 // Global Objects
@@ -536,13 +535,8 @@ void setup() {
   Serial.printf("  - Host: %s | Port: %d | Protocol: %s\n", host.c_str(), port, protocol.c_str());
   Serial.printf("  - Device UUID: %s\n", cfgDeviceId.c_str());
   Serial.printf("  - Device Key Length: %d chars\n", cfgDeviceKey.length());
-  Serial.printf("  - Request Headers Extra: X-Device-Key: [len: %d]\n", cfgDeviceKey.length());
-
-  // Initialize WebSocket connection with User-Agent and Origin to bypass CDN/routing firewall filters
-  cfgExtraHeaders = "X-Device-Key: " + cfgDeviceKey + "\r\n" +
-                    "User-Agent: Mozilla/5.0 (ESP32; CPU IoT Node)\r\n" +
-                    "Origin: https://" + host + "\r\n";
-  webSocket.setExtraHeaders(cfgExtraHeaders.c_str());
+  // Build subprotocol string containing authentication key (matches emulator method)
+  String subProto = "every-panel-device-auth, " + cfgDeviceKey;
 
   if (protocol.equalsIgnoreCase("wss")) {
     // Sync time via NTP (required for validating certificate expiration dates)
@@ -563,10 +557,10 @@ void setup() {
     }
 
     // Connect using secure TLS with Let's Encrypt Root CA validation and subprotocol negotiation
-    webSocket.beginSslWithCA(host.c_str(), port, wsPath.c_str(), LETS_ENCRYPT_ROOT_CA, "every-panel-device-auth");
+    webSocket.beginSslWithCA(host.c_str(), port, wsPath.c_str(), LETS_ENCRYPT_ROOT_CA, subProto.c_str());
     Serial.printf("[WS] Connecting securely (SSL Certificate Verified) to wss://%s:%d%s\n", host.c_str(), port, wsPath.c_str());
   } else {
-    webSocket.begin(host.c_str(), port, wsPath.c_str(), "every-panel-device-auth");
+    webSocket.begin(host.c_str(), port, wsPath.c_str(), subProto.c_str());
     Serial.printf("[WS] Connecting to ws://%s:%d%s\n", host.c_str(), port, wsPath.c_str());
   }
 

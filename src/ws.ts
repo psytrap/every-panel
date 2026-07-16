@@ -130,15 +130,11 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
 
   if (role === "device") {
     const deviceKey = req.headers.get("X-Device-Key") || subprotocolKey || url.searchParams.get("device_key") || "";
-    // DEBUG BYPASS: Commented out device key verification
-    /*
     const keyMatches = await checkDeviceKey(deviceId, deviceKey);
     if (!keyMatches) {
       console.log(`[WS REJECT] Key mismatch for Device ID: "${deviceId}". Provided: "${deviceKey}"`);
       return new Response("Unauthorized: Invalid or missing device key.", { status: 403 });
     }
-    */
-    console.log(`[WS DEBUG] Device key verification bypassed for Device ID: "${deviceId}" (Key: "${deviceKey}")`);
   }
 
   // Parse session from cookie headers to track the client
