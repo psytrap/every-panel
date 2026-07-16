@@ -135,6 +135,13 @@ To establish a connection, a physical device must present a valid, registered **
 3.  **URL Query Parameter**: Append the key directly to the URL query string:
     `/ws?role=device&device_id=<device_id>&device_key=<device_key>`
 
+### 3.1 On-Demand Heartbeat Keepalive (Ping-Pong)
+To minimize energy consumption and bandwidth overhead for battery-powered or low-resource IoT devices:
+*   **Active Viewers Check**: Web clients viewing a device's panel periodically broadcast a `"device_ping_request"` event via a global `BroadcastChannel` (`"every-panel-ws"`).
+*   **Heartbeat Active**: When a server isolate (where the device WebSocket is connected) receives a `"device_ping_request"` event on the channel, it marks the viewer as active and sends a `{ "type": "ping" }` message frame to the device. The device must reply with `{ "type": "pong" }`. If no pong response is received within 15 seconds, the server times out and terminates the socket connection.
+*   **Heartbeat Suspended**: If no client panels are open globally, no broadcasts are transmitted. The server suspends sending ping requests and the timeout check is bypassed, allowing the connection to rest in a low-overhead idle state.
+*   **Compatibility Fallback**: In environments where `BroadcastChannel` is not supported (such as local testing without Deno's unstable broadcast flag), the server falls back to directly pinging the local device store when local clients are active.
+
 ### Message Types:
 
 #### A. UI Definition Packet (Device -> Server -> KV Watch -> Clients)

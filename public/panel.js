@@ -66,6 +66,11 @@
         else if (msg.type === "error") {
           alert(msg.message);
         }
+
+        else if (msg.type === "ping") {
+          // Server is checking if this panel is open — reply with pong
+          ws.send(JSON.stringify({ type: "pong" }));
+        }
       };
 
       ws.onclose = () => {

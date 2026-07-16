@@ -26,6 +26,18 @@ function waitForMessage(ws: WebSocket, predicate: (msg: any) => boolean, timeout
   });
 }
 
+// Auto-reply to server pings with a pong on behalf of a mock UI client
+function autoReplyPong(ws: WebSocket) {
+  ws.addEventListener("message", (event: MessageEvent) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "ping" && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "pong" }));
+      }
+    } catch { /* ignore */ }
+  });
+}
+
 Deno.test({
   name: "Mock WebSocket Integration: Concurrency, Control Lease, and Command Routing",
   fn: async () => {
@@ -35,7 +47,7 @@ Deno.test({
 
     const serverProc = new Deno.Command("deno", {
       args: ["run", "--allow-net", "--allow-env", "--allow-read", "--unstable-kv", mainTsPath],
-      env: { DISABLE_AUTH: "true", PORT: port, KV_PATH: testDbPath }
+      env: { DISABLE_AUTH: "true", PORT: port, KV_PATH: testDbPath, PING_INTERVAL_MS: "5000" }
     }).spawn();
 
     // Give server 1.5 seconds to bind to port 8005
@@ -65,6 +77,10 @@ Deno.test({
       new Promise(resolve => clientAWs.onopen = resolve),
       new Promise(resolve => clientBWs.onopen = resolve),
     ]);
+
+    // Auto-reply pong to server pings for both UI clients
+    autoReplyPong(clientAWs);
+    autoReplyPong(clientBWs);
 
     const deviceWs = new WebSocket(devUrl, ["every-panel-device-auth", deviceKey]);
     await new Promise(resolve => deviceWs.onopen = resolve);
@@ -153,6 +169,24 @@ Deno.test({
       assertEquals(liveUpdateB.is_controller, false);
       console.log("[Test] Lease lock auto-released upon client disconnect!");
 
+      // Step 7: Heartbeat — server pings UI clients, clients reply, device gets viewers_active
+      // lastPong is primed on client connect, so viewers_active fires on the first 5s tick
+      console.log("[Test] Waiting for server to ping UI clients and device to receive viewers_active...");
+      const viewersActivePromise = waitForMessage(deviceWs, m => m.type === "viewers_active", 8000);
+      // Tab B is still connected and auto-pong is active — server should send viewers_active to device
+      const viewersActiveMsg = await viewersActivePromise;
+      assertEquals(viewersActiveMsg.type, "viewers_active");
+      console.log("[Test] Device correctly notified: viewers_active!");
+
+      // Step 8: Disconnect remaining UI client — device should receive viewers_inactive
+      console.log("[Test] Disconnecting last UI client (Tab B)...");
+      clientBWs.close();
+      // lastPong is expired on disconnect, so viewers_inactive fires on the next ~5s tick
+      const viewersInactivePromise = waitForMessage(deviceWs, m => m.type === "viewers_inactive", 8000);
+      const viewersInactiveMsg = await viewersInactivePromise;
+      assertEquals(viewersInactiveMsg.type, "viewers_inactive");
+      console.log("[Test] Device correctly notified: viewers_inactive after all UI tabs closed!");
+
     } finally {
       // Shutdown connections
       deviceWs.close();
@@ -165,3 +199,4 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false
 });
+

@@ -16,30 +16,66 @@ import {
 export const clients = new Set<WebSocket>();
 export const devices = new Map<string, { socket: WebSocket; lastSeen: number }>();
 
-// Periodic Device Keepalive Ping (Local Isolate)
+// BroadcastChannel for cross-isolate viewer pong relay
+export const wsChannel = typeof BroadcastChannel !== "undefined"
+  ? new BroadcastChannel("every-panel-ws")
+  : null;
+
+// Per-device viewer state: tracks last pong time and whether device was already notified
+const viewerState = new Map<string, { lastPong: number; notifiedActive: boolean }>();
+
+function getViewerState(deviceId: string) {
+  if (!viewerState.has(deviceId)) {
+    viewerState.set(deviceId, { lastPong: 0, notifiedActive: false });
+  }
+  return viewerState.get(deviceId)!;
+}
+
+// Receive cross-isolate viewer_pong (from clients on other isolates)
+if (wsChannel) {
+  wsChannel.onmessage = (event) => {
+    const { type, deviceId } = event.data;
+    if (type === "viewer_pong") {
+      getViewerState(deviceId).lastPong = Date.now();
+    }
+  };
+}
+
+// Every 30s: ping all local UI clients watching each locally-connected device,
+// then notify the device on viewer presence state changes.
+// PING_INTERVAL_MS env var allows tests to override this to a shorter value.
+const PING_INTERVAL_MS = parseInt(Deno.env.get("PING_INTERVAL_MS") ?? "30000");
 setInterval(async () => {
   const now = Date.now();
+
   for (const [deviceId, dev] of devices.entries()) {
-    // If device hasn't responded in 15 seconds, disconnect it
-    if (now - dev.lastSeen > 15000) {
-      console.log(`[Heartbeat] Device '${deviceId}' timed out. Disconnecting.`);
-      try {
-        dev.socket.close();
-      } catch { /* ignore */ }
-      
-      const current = devices.get(deviceId);
-      if (current && current.socket === dev.socket) {
-        devices.delete(deviceId);
-        // Update global status in Deno KV to detached
-        await kv.set(pk("device", deviceId, "status"), { state: "detached", controllerSessionId: null });
-      }
-    } else {
-      if (dev.socket.readyState === WebSocket.OPEN) {
-        dev.socket.send(JSON.stringify({ type: "ping" }));
+    // Ping all local UI clients watching this device
+    for (const client of clients) {
+      if ((client as any).role === "client" && (client as any).deviceId === deviceId) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: "ping" }));
+        }
       }
     }
+
+    // Determine viewer presence: recent pong within TTL (1 interval + 10s grace)
+    const vs = getViewerState(deviceId);
+    const hasViewers = (now - vs.lastPong) < (PING_INTERVAL_MS + 10000);
+
+    if (dev.socket.readyState !== WebSocket.OPEN) continue;
+
+    // Notify device only on state transitions
+    if (hasViewers && !vs.notifiedActive) {
+      vs.notifiedActive = true;
+      console.log(`[Heartbeat] Viewers active for device '${deviceId}'`);
+      dev.socket.send(JSON.stringify({ type: "viewers_active" }));
+    } else if (!hasViewers && vs.notifiedActive) {
+      vs.notifiedActive = false;
+      console.log(`[Heartbeat] No viewers for device '${deviceId}'`);
+      dev.socket.send(JSON.stringify({ type: "viewers_inactive" }));
+    }
   }
-}, 5000);
+}, PING_INTERVAL_MS);
 
 export function startDeviceKVWatcher(socket: WebSocket, deviceId: string) {
   const watchKeys = [pk("device", deviceId, "command")];
@@ -173,6 +209,10 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
       (socket as any).tabId = tabId;
       clients.add(socket);
       
+      // Prime viewer state on connect so the next interval tick immediately sees this client as active
+      getViewerState(deviceId).lastPong = Date.now();
+      // No client-side ping loop needed: server pings clients, clients reply with pong
+      
       const uiDef = await getUIDefinition(deviceId);
       const latest = await getLatestTelemetry(deviceId);
 
@@ -212,7 +252,16 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
       } 
       
       else if (role === "client") {
-        if (msg.type === "acquire_control") {
+        if (msg.type === "pong") {
+          // UI replied to server ping — update viewer presence for this device
+          getViewerState(deviceId).lastPong = Date.now();
+          // Relay cross-isolate so the device's isolate also knows viewers are present
+          if (wsChannel) {
+            wsChannel.postMessage({ type: "viewer_pong", deviceId });
+          }
+        }
+
+        else if (msg.type === "acquire_control") {
           console.log(`[WS] Client tab '${tabId}' acquiring control lease for ${deviceId}`);
           await kv.set(pk("device", deviceId, "status"), {
             state: "control",
@@ -295,6 +344,16 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
     else {
       console.log("[WS] Web Client disconnected from this isolate");
       clients.delete(socket);
+
+      // If no more local clients are watching this device, expire viewer state immediately
+      // so the next interval tick sends viewers_inactive without waiting out the full TTL
+      const remainingClients = Array.from(clients).some(
+        c => (c as any).role === "client" && (c as any).deviceId === deviceId
+      );
+      if (!remainingClients) {
+        const vs = getViewerState(deviceId);
+        vs.lastPong = 0; // Expire immediately
+      }
       
       // Release control if this client tab held the active lease lock
       const statusKey = pk("device", deviceId, "status");

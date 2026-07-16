@@ -476,9 +476,12 @@ const HTML_CONTENT = `
         try {
           const msg = JSON.parse(event.data);
 
-          if (msg.type === "ping") {
-            // Heartbeat reply
-            ws.send(JSON.stringify({ type: "pong" }));
+          if (msg.type === "viewers_active") {
+            log("Server: viewers are watching this device.", "System");
+          }
+
+          else if (msg.type === "viewers_inactive") {
+            log("Server: no viewers watching this device.", "System");
           } 
           
           else if (msg.type === "command") {
