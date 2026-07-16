@@ -288,6 +288,10 @@ const HTML_CONTENT = `
           <label>Emulator Device ID</label>
           <input type="text" id="device-id" class="input-field" value="e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d">
         </div>
+        <div class="form-group">
+          <label>Emulator Device Key</label>
+          <input type="password" id="device-key" class="input-field" placeholder="Secret Key">
+        </div>
         <button id="connect-btn" class="btn" onclick="toggleConnection()">Connect to Hub</button>
       </div>
 
@@ -440,11 +444,12 @@ const HTML_CONTENT = `
     function connect() {
       const hubUrl = document.getElementById("hub-url").value.trim();
       const deviceId = document.getElementById("device-id").value.trim();
+      const deviceKey = document.getElementById("device-key").value.trim();
       const connectBtn = document.getElementById("connect-btn");
       const badge = document.getElementById("connection-badge");
       const statusText = document.getElementById("status-text");
 
-      const wsTarget = hubUrl + "?role=device&device_id=" + deviceId;
+      const wsTarget = hubUrl + "?role=device&device_id=" + deviceId + "&device_key=" + deviceKey;
       log(\`Attempting WebSocket connection to: \${wsTarget}...\`, "System");
 
       ws = new WebSocket(wsTarget);

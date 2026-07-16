@@ -15,7 +15,8 @@ import {
   getUIDefinition,
   GlobalDeviceStatus,
   authorizeDevice,
-  deauthorizeDevice
+  deauthorizeDevice,
+  getDeviceKey
 } from "./db.ts";
 import {
   getPanelHtml,
@@ -310,6 +311,7 @@ async function handler(req: Request): Promise<Response> {
     const uiDef = await getUIDefinition(deviceId);
     const settingsRes = await kv.get<{ historyTtlDays: number }>(pk("device", deviceId, "settings"));
     const historyTtlDays = settingsRes.value ? settingsRes.value.historyTtlDays : 7;
+    const deviceKey = await getDeviceKey(deviceId);
 
     let historyCount = 0;
     let historyBytes = 0;
@@ -322,6 +324,7 @@ async function handler(req: Request): Promise<Response> {
 
     return new Response(JSON.stringify({
       deviceId,
+      deviceKey: deviceKey || "N/A",
       title: uiDef ? (uiDef as any).payload?.title || "Unnamed Device" : "Unnamed Device",
       historyCount,
       historyBytes,
@@ -335,7 +338,7 @@ async function handler(req: Request): Promise<Response> {
   if (path === "/api/devices/add" && req.method === "POST") {
     try {
       const body = await req.json();
-      const { deviceId } = body;
+      let { deviceId, deviceKey } = body;
       
       if (!deviceId) {
         return new Response(JSON.stringify({ success: false, error: "Missing deviceId" }), { status: 400 });
@@ -347,9 +350,16 @@ async function handler(req: Request): Promise<Response> {
         return new Response(JSON.stringify({ success: false, error: "Device ID must be a valid UUID format." }), { status: 400 });
       }
 
-      await authorizeDevice(deviceId);
+      // Generate a secure 16-character alphanumeric key if not provided
+      if (!deviceKey) {
+        deviceKey = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+          .map(b => b.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      await authorizeDevice(deviceId, deviceKey);
       
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, deviceKey }), {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     } catch (e) {

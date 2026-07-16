@@ -8,7 +8,8 @@ import {
   COOKIE_NAME,
   GlobalDeviceStatus,
   CommandMessage,
-  isDeviceAuthorized
+  isDeviceAuthorized,
+  checkDeviceKey
 } from "./db.ts";
 
 // Memory stores for active connections (local to this isolate instance)
@@ -117,6 +118,15 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   const authorized = await isDeviceAuthorized(deviceId);
   if (!authorized) {
     return new Response("Unauthorized: This Device ID has not been registered in the dashboard system.", { status: 403 });
+  }
+
+  // If a physical device is connecting, it must supply the correct matching device key
+  if (role === "device") {
+    const deviceKey = url.searchParams.get("device_key") || "";
+    const keyMatches = await checkDeviceKey(deviceId, deviceKey);
+    if (!keyMatches) {
+      return new Response("Unauthorized: Invalid or missing device key.", { status: 403 });
+    }
   }
 
   // Parse session from cookie headers to track the client

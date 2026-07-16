@@ -43,8 +43,20 @@ export async function isDeviceAuthorized(deviceId: string): Promise<boolean> {
   return res.value !== null;
 }
 
-export async function authorizeDevice(deviceId: string): Promise<void> {
-  await kv.set(pk("device_authorized", deviceId), { registeredAt: Date.now() });
+export async function authorizeDevice(deviceId: string, deviceKey: string): Promise<void> {
+  await kv.set(pk("device_authorized", deviceId), { registeredAt: Date.now(), deviceKey });
+}
+
+export async function checkDeviceKey(deviceId: string, deviceKey: string): Promise<boolean> {
+  if (deviceId === "default") return true;
+  const res = await kv.get<{ deviceKey: string }>(pk("device_authorized", deviceId));
+  if (!res.value) return false;
+  return res.value.deviceKey === deviceKey;
+}
+
+export async function getDeviceKey(deviceId: string): Promise<string | null> {
+  const res = await kv.get<{ deviceKey: string }>(pk("device_authorized", deviceId));
+  return res.value ? res.value.deviceKey : null;
 }
 
 export async function deauthorizeDevice(deviceId: string): Promise<void> {

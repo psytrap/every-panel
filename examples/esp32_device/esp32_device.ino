@@ -84,6 +84,7 @@ String cfgSsid;
 String cfgPass;
 String cfgHubUrl;
 String cfgDeviceId;
+String cfgDeviceKey;
 
 // ==========================================
 // Global Objects
@@ -182,8 +183,9 @@ bool loadConfig() {
   cfgPass     = prefs.getString("pass", "");
   cfgHubUrl   = prefs.getString("hub_url", "");
   cfgDeviceId = prefs.getString("device_id", "");
+  cfgDeviceKey = prefs.getString("device_key", "");
   prefs.end();
-  return cfgSsid.length() > 0 && cfgPass.length() > 0 && cfgHubUrl.length() > 0 && cfgDeviceId.length() > 0;
+  return cfgSsid.length() > 0 && cfgPass.length() > 0 && cfgHubUrl.length() > 0 && cfgDeviceId.length() > 0 && cfgDeviceKey.length() > 0;
 }
 
 void saveConfig() {
@@ -192,6 +194,7 @@ void saveConfig() {
   prefs.putString("pass", cfgPass);
   prefs.putString("hub_url", cfgHubUrl);
   prefs.putString("device_id", cfgDeviceId);
+  prefs.putString("device_key", cfgDeviceKey);
   prefs.end();
   Serial.println("[Config] Saved to flash.");
 }
@@ -229,6 +232,8 @@ void runSerialProvisioning() {
   
   String defaultUUID = cfgDeviceId.length() > 0 ? cfgDeviceId : getBuiltinUUID();
   cfgDeviceId = serialPrompt("Device UUID", defaultUUID);
+  
+  cfgDeviceKey = serialPrompt("Device Key", cfgDeviceKey);
  
   saveConfig();
 }
@@ -478,9 +483,9 @@ void setup() {
   // Build the WebSocket path with device role and UUID parameters
   String wsPath = path;
   if (wsPath.indexOf('?') == -1) {
-    wsPath += "?role=device&device_id=" + cfgDeviceId;
+    wsPath += "?role=device&device_id=" + cfgDeviceId + "&device_key=" + cfgDeviceKey;
   } else {
-    wsPath += "&role=device&device_id=" + cfgDeviceId;
+    wsPath += "&role=device&device_id=" + cfgDeviceId + "&device_key=" + cfgDeviceKey;
   }
 
   // Initialize WebSocket connection

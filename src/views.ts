@@ -220,6 +220,10 @@ export function getStatsPageHtml(deviceId: string): string {
             <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Retention Policy</div>
             <div id="stat-retention" style="font-size:32px; font-weight:700; color:var(--text-primary);">--</div>
           </div>
+          <div class="glass" style="padding:20px; text-align:center; border-radius:12px; background:rgba(255,255,255,0.02);">
+            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Device Key (Secret)</div>
+            <div id="stat-key" style="font-size:15px; font-weight:600; color:var(--text-primary); font-family:monospace; padding-top:12px; word-break:break-all;">--</div>
+          </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:20px; border-top: 1px solid var(--border-color); padding-top:24px;">
@@ -265,6 +269,7 @@ export function getStatsPageHtml(deviceId: string): string {
         document.getElementById("stat-bytes").innerText = formatBytes(stats.historyBytes);
         document.getElementById("stat-retention").innerText = formatRetention(stats.historyTtlDays);
         document.getElementById("retention-select").value = stats.historyTtlDays;
+        document.getElementById("stat-key").innerText = stats.deviceKey;
       } catch (e) {
         document.getElementById("device-title").innerText = "Error loading stats";
       }

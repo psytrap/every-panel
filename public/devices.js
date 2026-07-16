@@ -115,6 +115,7 @@
         });
         const data = await res.json();
         if (data.success) {
+          alert(`Device successfully registered!\n\nDevice ID: ${input}\nDevice Key: ${data.deviceKey}\n\nMake sure to configure your device firmware to send this device_key!`);
           hideAddDeviceModal();
           loadDevices();
         } else {
