@@ -126,6 +126,15 @@ WebSocket endpoints are grouped by query parameters upon handshake:
 *   **IoT Device Connection**: `/ws?role=device&device_id=my_device_1`
 *   **Browser Client Connection**: `/ws?role=client&device_id=my_device_1`
 
+#### Device Authentication Options:
+To establish a connection, a physical device must present a valid, registered **Device Key** using one of the following methods (evaluated by the server in priority order):
+1.  **WebSocket Subprotocol (Recommended)**: Pass the key as the second subprotocol value in the handshake:
+    `Sec-WebSocket-Protocol: every-panel-device-auth, <device_key>`
+2.  **Custom HTTP Header**: Send the key via the `X-Device-Key` header:
+    `X-Device-Key: <device_key>`
+3.  **URL Query Parameter**: Append the key directly to the URL query string:
+    `/ws?role=device&device_id=<device_id>&device_key=<device_key>`
+
 ### Message Types:
 
 #### A. UI Definition Packet (Device -> Server -> KV Watch -> Clients)
@@ -276,7 +285,6 @@ The dashboard page is served directly by `main.ts` as an embedded template liter
 ---
 
 ## 7. Future Enhancements & TODOs
-*   [ ] **Security Mechanism with App Key**: Implement a shared application key verification mechanism for both IoT devices and client browser connections to prevent unauthorized dashboard discovery and session hijacking.
 *   [ ] **Public Panels**: Allow devices to publish their dashboards as public, read-only panels that can be viewed by unauthenticated users, while keeping control leases restricted to authorized sessions.
 *   [ ] **Comprehensive Deployment and Hardware Guide**: Add detailed examples and documentation outlining [ ] the physical ESP32 hardware wiring description (DS18B20 1-Wire pinout connections, GPIO26 wiring, and pull-up resistor requirements).
 *   [ ] **Mobile-Friendly UI Optimization**: Optimize the Glassmorphism layout for small screens and mobile devices, introducing touch-optimized controls (larger tap targets, slider thumb adjustments), responsive flex-wrap cards, and smooth pull-to-refresh gestures.

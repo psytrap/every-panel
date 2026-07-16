@@ -181,6 +181,18 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(wsSuccessProtoRes.status, 101); // 101 Switching Protocols
     await wsSuccessProtoRes.body?.cancel();
 
+    // 4d. Connection upgrades successfully with correct key in URL query parameter fallback
+    const wsSuccessQueryRes = await fetch(`${baseUrl}/ws?role=device&device_id=${testUuid}&device_key=${testUuidKey}`, {
+      headers: {
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+        "Sec-WebSocket-Version": "13"
+      }
+    });
+    assertEquals(wsSuccessQueryRes.status, 101); // 101 Switching Protocols
+    await wsSuccessQueryRes.body?.cancel();
+
     // Test Case 5: Logout invalidates and deletes the session
     console.log("[Test] 5. Verifying logout routine clears session state...");
     const logoutRes = await fetch(`${baseUrl}/logout`, {
