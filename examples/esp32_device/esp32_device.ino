@@ -538,8 +538,10 @@ void setup() {
   Serial.printf("  - Device Key Length: %d chars\n", cfgDeviceKey.length());
   Serial.printf("  - Request Headers Extra: X-Device-Key: [len: %d]\n", cfgDeviceKey.length());
 
-  // Initialize WebSocket connection
-  cfgExtraHeaders = "X-Device-Key: " + cfgDeviceKey + "\r\n";
+  // Initialize WebSocket connection with User-Agent and Origin to bypass CDN/routing firewall filters
+  cfgExtraHeaders = "X-Device-Key: " + cfgDeviceKey + "\r\n" +
+                    "User-Agent: Mozilla/5.0 (ESP32; CPU IoT Node)\r\n" +
+                    "Origin: https://" + host + "\r\n";
   webSocket.setExtraHeaders(cfgExtraHeaders.c_str());
 
   if (protocol.equalsIgnoreCase("wss")) {
@@ -560,11 +562,11 @@ void setup() {
       Serial.println(asctime(&timeinfo));
     }
 
-    // Connect using secure TLS with Let's Encrypt Root CA validation
-    webSocket.beginSslWithCA(host.c_str(), port, wsPath.c_str(), LETS_ENCRYPT_ROOT_CA);
+    // Connect using secure TLS with Let's Encrypt Root CA validation and subprotocol negotiation
+    webSocket.beginSslWithCA(host.c_str(), port, wsPath.c_str(), LETS_ENCRYPT_ROOT_CA, "every-panel-device-auth");
     Serial.printf("[WS] Connecting securely (SSL Certificate Verified) to wss://%s:%d%s\n", host.c_str(), port, wsPath.c_str());
   } else {
-    webSocket.begin(host.c_str(), port, wsPath.c_str());
+    webSocket.begin(host.c_str(), port, wsPath.c_str(), "every-panel-device-auth");
     Serial.printf("[WS] Connecting to ws://%s:%d%s\n", host.c_str(), port, wsPath.c_str());
   }
 
