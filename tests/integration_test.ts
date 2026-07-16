@@ -55,11 +55,11 @@ Deno.test({
     assertEquals(authJson.success, true);
     
     // Connect Mock WebSockets
-    const devUrl = `ws://localhost:${port}/ws?role=device&device_id=${deviceId}&device_key=${deviceKey}`;
+    const devUrl = `ws://localhost:${port}/ws?role=device&device_id=${deviceId}`;
     const clientAUrl = `ws://localhost:${port}/ws?role=client&device_id=${deviceId}&tab_id=tab-A`;
     const clientBUrl = `ws://localhost:${port}/ws?role=client&device_id=${deviceId}&tab_id=tab-B`;
 
-    const deviceWs = new WebSocket(devUrl);
+    const deviceWs = new WebSocket(devUrl, ["every-panel-device-auth", deviceKey]);
     const clientAWs = new WebSocket(clientAUrl);
     const clientBWs = new WebSocket(clientBUrl);
 

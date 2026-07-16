@@ -112,6 +112,7 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(regRes.status, 200);
     const regJson = await regRes.json();
     assertEquals(regJson.success, true);
+    const testUuidKey = regJson.deviceKey;
 
     // Verify stats diagnostics page is secure and loads correctly
     console.log("[Test] 4b. Verifying stats view and stats REST API load successfully...");
@@ -130,6 +131,55 @@ Deno.test("Mock Authentication Integration: OAuth boundary and session verificat
     assertEquals(statsJson.deviceId, testUuid);
     assertEquals(typeof statsJson.historyCount, "number");
     assertEquals(typeof statsJson.historyBytes, "number");
+
+    // Verify WebSocket connection upgrade security via X-Device-Key headers and subprotocols
+    console.log("[Test] 4c. Verifying WebSocket upgrades require valid keys in headers/protocols...");
+    
+    // 1. Connection fails with bad key in header
+    const wsFailRes = await fetch(`${baseUrl}/ws?role=device&device_id=${testUuid}`, {
+      headers: { "X-Device-Key": "wrong_key_123" }
+    });
+    assertEquals(wsFailRes.status, 403);
+    await wsFailRes.body?.cancel();
+
+    // 2. Connection fails with bad key in subprotocols
+    const wsFailProtoRes = await fetch(`${baseUrl}/ws?role=device&device_id=${testUuid}`, {
+      headers: {
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Protocol": "every-panel-device-auth, wrong_proto_key_123"
+      }
+    });
+    assertEquals(wsFailProtoRes.status, 403);
+    await wsFailProtoRes.body?.cancel();
+
+    // 3. Connection upgrades successfully with correct key in header
+    const wsSuccessRes = await fetch(`${baseUrl}/ws?role=device&device_id=${testUuid}`, {
+      headers: {
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+        "Sec-WebSocket-Version": "13",
+        "X-Device-Key": testUuidKey
+      }
+    });
+    assertEquals(wsSuccessRes.status, 101); // 101 Switching Protocols
+    await wsSuccessRes.body?.cancel();
+
+    // 4. Connection upgrades successfully with correct key in subprotocols
+    const wsSuccessProtoRes = await fetch(`${baseUrl}/ws?role=device&device_id=${testUuid}`, {
+      headers: {
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Protocol": `every-panel-device-auth, ${testUuidKey}`
+      }
+    });
+    assertEquals(wsSuccessProtoRes.status, 101); // 101 Switching Protocols
+    await wsSuccessProtoRes.body?.cancel();
 
     // Test Case 5: Logout invalidates and deletes the session
     console.log("[Test] 5. Verifying logout routine clears session state...");

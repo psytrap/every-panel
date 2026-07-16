@@ -85,6 +85,7 @@ String cfgPass;
 String cfgHubUrl;
 String cfgDeviceId;
 String cfgDeviceKey;
+String cfgExtraHeaders;
 
 // ==========================================
 // Global Objects
@@ -483,12 +484,15 @@ void setup() {
   // Build the WebSocket path with device role and UUID parameters
   String wsPath = path;
   if (wsPath.indexOf('?') == -1) {
-    wsPath += "?role=device&device_id=" + cfgDeviceId + "&device_key=" + cfgDeviceKey;
+    wsPath += "?role=device&device_id=" + cfgDeviceId;
   } else {
-    wsPath += "&role=device&device_id=" + cfgDeviceId + "&device_key=" + cfgDeviceKey;
+    wsPath += "&role=device&device_id=" + cfgDeviceId;
   }
 
   // Initialize WebSocket connection
+  cfgExtraHeaders = "X-Device-Key: " + cfgDeviceKey + "\r\n";
+  webSocket.setExtraHeaders(cfgExtraHeaders.c_str());
+
   if (protocol.equalsIgnoreCase("wss")) {
     // Sync time via NTP (required for validating certificate expiration dates)
     Serial.print("[Time] Syncing time via NTP...");

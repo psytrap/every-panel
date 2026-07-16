@@ -449,10 +449,10 @@ const HTML_CONTENT = `
       const badge = document.getElementById("connection-badge");
       const statusText = document.getElementById("status-text");
 
-      const wsTarget = hubUrl + "?role=device&device_id=" + deviceId + "&device_key=" + deviceKey;
-      log(\`Attempting WebSocket connection to: \${wsTarget}...\`, "System");
+      const wsTarget = hubUrl + "?role=device&device_id=" + deviceId;
+      log("Attempting WebSocket connection to: " + wsTarget + " (authenticating via subprotocol)...", "System");
 
-      ws = new WebSocket(wsTarget);
+      ws = new WebSocket(wsTarget, ["every-panel-device-auth", deviceKey]);
 
       ws.onopen = () => {
         log("Connection established successfully with Every-Panel hub.", "System");

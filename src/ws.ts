@@ -121,8 +121,14 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   }
 
   // If a physical device is connecting, it must supply the correct matching device key
+  // If a physical device is connecting, it must supply the correct matching device key
+  const protocols = req.headers.get("sec-websocket-protocol") || "";
+  const subprotocolKey = protocols.split(",")
+    .map(p => p.trim())
+    .find(p => p && p !== "every-panel-device-auth");
+
   if (role === "device") {
-    const deviceKey = url.searchParams.get("device_key") || "";
+    const deviceKey = req.headers.get("X-Device-Key") || subprotocolKey || url.searchParams.get("device_key") || "";
     const keyMatches = await checkDeviceKey(deviceId, deviceKey);
     if (!keyMatches) {
       return new Response("Unauthorized: Invalid or missing device key.", { status: 403 });
@@ -137,7 +143,13 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   // Extract tab_id to distinguish between multiple tabs from the same logged-in user
   const tabId = url.searchParams.get("tab_id") || sessionId;
 
-  const { socket, response } = Deno.upgradeWebSocket(req);
+  const selectedProtocol = protocols.includes("every-panel-device-auth")
+    ? "every-panel-device-auth"
+    : undefined;
+
+  const { socket, response } = Deno.upgradeWebSocket(req, {
+    protocol: selectedProtocol
+  });
 
   socket.onopen = async () => {
     if (role === "device") {
