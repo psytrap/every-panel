@@ -32,6 +32,7 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <time.h>
+#include "TelemetryLogic.h"
 
 // Let's Encrypt ISRG Root X1 Trust Anchor Certificate (PEM format)
 const char* LETS_ENCRYPT_ROOT_CA = \
@@ -102,37 +103,7 @@ bool     layoutSent         = false;
 bool     viewersActive      = false;
 unsigned long lastTelemetry = 0;
 
-// ==========================================
-// URL Parsing Helper
-// ==========================================
 
-void parseUrl(String url, String &protocol, String &host, int &port, String &path) {
-  protocol = "ws";
-  host = "";
-  port = 80;
-  path = "/ws";
-
-  int protoIdx = url.indexOf("://");
-  if (protoIdx != -1) {
-    protocol = url.substring(0, protoIdx);
-    url = url.substring(protoIdx + 3);
-  }
-
-  int pathIdx = url.indexOf('/');
-  if (pathIdx != -1) {
-    path = url.substring(pathIdx);
-    url = url.substring(0, pathIdx);
-  }
-
-  int portIdx = url.indexOf(':');
-  if (portIdx != -1) {
-    host = url.substring(0, portIdx);
-    port = url.substring(portIdx + 1).toInt();
-  } else {
-    host = url;
-    port = (protocol.equalsIgnoreCase("wss")) ? 443 : 80;
-  }
-}
 
 // ==========================================
 // Serial Provisioning Helpers
@@ -310,66 +281,8 @@ bool connectWiFi() {
 // The server stores this and renders a live dashboard for browser clients.
 
 void sendLayoutDefinition() {
-  JsonDocument doc;
-  doc["type"]      = "ui_definition";
-  doc["device_id"] = cfgDeviceId.c_str();
-
-  JsonObject layoutDef = doc["layout_def"].to<JsonObject>();
-  layoutDef["es-version"] = "0.0";
-  layoutDef["command"]    = "page";
-
-  JsonObject payload = layoutDef["payload"].to<JsonObject>();
-  payload["title"] = "ESP32 Temperature Node";
-  payload["type"]  = "layout";
-
-  JsonObject rootProps = payload["properties"].to<JsonObject>();
-  rootProps["id"]   = "layout_root";
-  rootProps["flow"] = "row";
-
-  JsonArray rootLayout = payload["layout"].to<JsonArray>();
-
-  // --- Temperature reading (read-only sensor output) ---
-  JsonObject tempWidget = rootLayout.add<JsonObject>();
-  tempWidget["type"] = "number";
-  JsonObject tempProps = tempWidget["properties"].to<JsonObject>();
-  tempProps["label"]    = "DS18B20 Temperature (°C)";
-  tempProps["id"]       = "temperature";
-  tempProps["step"]     = ".1";
-  tempProps["value"]    = String(currentTempC, 1);
-  tempProps["update"]   = "false";
-  tempProps["readonly"] = "true";
-
-  // --- Divider ---
-  JsonObject divider = rootLayout.add<JsonObject>();
-  divider["type"] = "divider";
-  JsonObject divProps = divider["properties"].to<JsonObject>();
-  divProps["id"] = "divider_1";
-
-  // --- Uptime text (read-only) ---
-  JsonObject uptimeWidget = rootLayout.add<JsonObject>();
-  uptimeWidget["type"] = "text";
-  JsonObject uptimeProps = uptimeWidget["properties"].to<JsonObject>();
-  uptimeProps["label"]    = "Device Uptime";
-  uptimeProps["id"]       = "uptime";
-  uptimeProps["value"]    = "0s";
-  uptimeProps["update"]   = "false";
-  uptimeProps["readonly"] = "true";
-
-  // --- Device status log (read-only) ---
-  JsonObject statusWidget = rootLayout.add<JsonObject>();
-  statusWidget["type"] = "text";
-  JsonObject statusProps = statusWidget["properties"].to<JsonObject>();
-  statusProps["label"]    = "Device Status";
-  statusProps["id"]       = "status_text";
-  statusProps["value"]    = "Booting...";
-  statusProps["update"]   = "false";
-  statusProps["readonly"] = "true";
-
-  // Serialize and send
-  String output;
-  serializeJson(doc, output);
-  webSocket.sendTXT(output);
-
+  String payload = TelemetryLogic::buildLayoutJson(cfgDeviceId, currentTempC);
+  webSocket.sendTXT(payload);
   Serial.println("[WS] Layout definition sent to hub.");
 }
 
@@ -384,35 +297,17 @@ void sendTelemetry() {
   currentTempC = sensors.getTempCByIndex(0);
 
   // Guard against disconnected sensor reads (-127°C is the error sentinel)
-  if (currentTempC == DEVICE_DISCONNECTED_C) {
-    hasFault = true;
+  hasFault = (currentTempC == DEVICE_DISCONNECTED_C);
+  if (hasFault) {
     Serial.println("[Sensor] DS18B20 read error — sensor disconnected?");
-  } else {
-    hasFault = false;
   }
 
-  // Format uptime as human-readable string
-  unsigned long uptimeSec = millis() / 1000;
-  char uptimeBuf[32];
-  snprintf(uptimeBuf, sizeof(uptimeBuf), "%lud %luh %lum %lus",
-           uptimeSec / 86400, (uptimeSec % 86400) / 3600,
-           (uptimeSec % 3600) / 60, uptimeSec % 60);
+  // Format uptime and build telemetry JSON payload using the logic class
+  String uptimeStr = TelemetryLogic::formatUptime(millis() / 1000);
+  String payload = TelemetryLogic::buildTelemetryJson(cfgDeviceId, currentTempC, uptimeStr, hasFault);
+  webSocket.sendTXT(payload);
 
-  // Build telemetry JSON
-  JsonDocument doc;
-  doc["type"]      = "telemetry";
-  doc["device_id"] = cfgDeviceId.c_str();
-
-  JsonObject data = doc["data"].to<JsonObject>();
-  data["temperature"] = round(currentTempC * 10.0) / 10.0;
-  data["uptime"]      = uptimeBuf;
-  data["status_text"] = hasFault ? "SENSOR FAULT: DS18B20 disconnected" : "Running normally";
-
-  String output;
-  serializeJson(doc, output);
-  webSocket.sendTXT(output);
-
-  Serial.printf("[Telemetry] Temp: %.1f°C | Uptime: %s\n", currentTempC, uptimeBuf);
+  Serial.printf("[Telemetry] Temp: %.1f°C | Uptime: %s\n", currentTempC, uptimeStr.c_str());
 }
 
 // ==========================================
@@ -439,41 +334,44 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
 
     case WStype_TEXT: {
-      // Parse incoming JSON message from the hub
-      JsonDocument doc;
-      DeserializationError err = deserializeJson(doc, payload, length);
-      if (err) {
-        Serial.printf("[WS] JSON parse error: %s\n", err.c_str());
-        break;
+      DeviceState state;
+      state.connected = connected;
+      state.layoutSent = layoutSent;
+      state.viewersActive = viewersActive;
+      state.triggerTelemetry = false;
+
+      // Delegate message parsing and state transitions to TelemetryLogic
+      String payloadStr = String((const char*)payload);
+      TelemetryLogic::handleEventText(payloadStr, state);
+
+      connected = state.connected;
+      layoutSent = state.layoutSent;
+      
+      if (state.viewersActive != viewersActive) {
+        viewersActive = state.viewersActive;
+        Serial.printf("[WS] Server notified: Viewers are %s.\n", viewersActive ? "active" : "inactive");
       }
 
-      const char* msgType = doc["type"];
-
-      // Heartbeat: respond to server pings
-      if (strcmp(msgType, "ping") == 0) {
-        webSocket.sendTXT("{\"type\":\"pong\"}");
-      }
-
-      // Viewer presence notifications
-      else if (strcmp(msgType, "viewers_active") == 0) {
-        Serial.println("[WS] Server notified: Viewers are active.");
-        viewersActive = true;
-        // Send telemetry immediately so the connecting client gets instant data
+      if (state.triggerTelemetry) {
         sendTelemetry();
         lastTelemetry = millis();
       }
 
-      else if (strcmp(msgType, "viewers_inactive") == 0) {
-        Serial.println("[WS] Server notified: Viewers are inactive.");
-        viewersActive = false;
-      }
-
-      // Command: process remote control actions from browser clients (logging only)
-      else if (strcmp(msgType, "command") == 0) {
-        const char* target = doc["target"];
-        Serial.printf("[Command] Target: %s, Value: ", target);
-        serializeJson(doc["value"], Serial);
-        Serial.println();
+      // Handle ping and commands locally
+      JsonDocument doc;
+      DeserializationError err = deserializeJson(doc, payload, length);
+      if (!err) {
+        const char* msgType = doc["type"];
+        if (msgType != nullptr) {
+          if (strcmp(msgType, "ping") == 0) {
+            webSocket.sendTXT("{\"type\":\"pong\"}");
+          } else if (strcmp(msgType, "command") == 0) {
+            const char* target = doc["target"];
+            Serial.printf("[Command] Target: %s, Value: ", target);
+            serializeJson(doc["value"], Serial);
+            Serial.println();
+          }
+        }
       }
       break;
     }
@@ -537,7 +435,7 @@ void setup() {
   // Parse the Hub URL configuration parameters
   String protocol, host, path;
   int port;
-  parseUrl(cfgHubUrl, protocol, host, port, path);
+  TelemetryLogic::parseUrl(cfgHubUrl, protocol, host, port, path);
 
   // Build the WebSocket path with device role and UUID parameters
   String wsPath = path;
