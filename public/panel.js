@@ -13,6 +13,8 @@
     let isController = false;
     let deviceState = "detached"; // "detached" | "live" | "control"
     let lastTelemetryTime = Date.now();
+    let lastPingReceivedTime = Date.now();
+    let detectedPingInterval = 10000; // default/fallback (10 seconds)
 
     // Maps to track DOM elements dynamically for updates
     const valueElements = new Map(); // id -> Element
@@ -28,6 +30,7 @@
     function connect() {
       console.log("Connecting to WebSocket...");
       ws = new WebSocket(wsUrl);
+      lastPingReceivedTime = Date.now();
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
@@ -68,8 +71,15 @@
         }
 
         else if (msg.type === "ping") {
-          // Server is checking if this panel is open — reply with pong
+          // Server is checking if this panel is open — reply with pong, track timing, and update status
+          const now = Date.now();
+          const measuredInterval = now - lastPingReceivedTime;
+          if (measuredInterval > 1000 && measuredInterval < 120000) {
+            detectedPingInterval = measuredInterval;
+          }
+          lastPingReceivedTime = now;
           ws.send(JSON.stringify({ type: "pong" }));
+          updatePanelState();
         }
       };
 
@@ -84,7 +94,7 @@
       if (deviceState === "disconnected") return "disconnected";
       if (deviceState === "detached") return "detached";
       if (latestData && (latestData.fault || latestData.error)) return "fault";
-      if (Date.now() - lastTelemetryTime > 10000) return "stale";
+      if (Date.now() - lastPingReceivedTime > (detectedPingInterval * 3)) return "stale";
       if (!layoutDef) return "initializing";
       return deviceState;
     }

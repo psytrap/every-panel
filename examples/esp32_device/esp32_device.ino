@@ -72,7 +72,8 @@ const char* LETS_ENCRYPT_ROOT_CA = \
 // ==========================================
 
 const int   ONE_WIRE_PIN  = 26;                 // DS18B20 1-Wire data pin
-const unsigned long TELEMETRY_INTERVAL_MS = 10 *1000; // Telemetry interval (ms)
+const unsigned long TELEMETRY_IDLE_INTERVAL_MS   = 5UL * 60UL * 1000UL; // Telemetry interval (ms) when idle (5 mins)
+const unsigned long TELEMETRY_ACTIVE_INTERVAL_MS = 15UL * 1000UL;       // Telemetry interval (ms) when active (15s)
 const int   WIFI_CONNECT_TIMEOUT_MS = 10000;     // WiFi connection timeout
 
 // ==========================================
@@ -98,6 +99,7 @@ float    currentTempC       = 0.0;
 bool     hasFault           = false;
 bool     connected          = false;
 bool     layoutSent         = false;
+bool     viewersActive      = false;
 unsigned long lastTelemetry = 0;
 
 // ==========================================
@@ -422,8 +424,9 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 
     case WStype_DISCONNECTED:
       Serial.println("[WS] Disconnected from hub.");
-      connected  = false;
-      layoutSent = false;
+      connected     = false;
+      layoutSent    = false;
+      viewersActive = false;
       break;
 
     case WStype_ERROR:
@@ -449,6 +452,20 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       // Heartbeat: respond to server pings
       if (strcmp(msgType, "ping") == 0) {
         webSocket.sendTXT("{\"type\":\"pong\"}");
+      }
+
+      // Viewer presence notifications
+      else if (strcmp(msgType, "viewers_active") == 0) {
+        Serial.println("[WS] Server notified: Viewers are active.");
+        viewersActive = true;
+        // Send telemetry immediately so the connecting client gets instant data
+        sendTelemetry();
+        lastTelemetry = millis();
+      }
+
+      else if (strcmp(msgType, "viewers_inactive") == 0) {
+        Serial.println("[WS] Server notified: Viewers are inactive.");
+        viewersActive = false;
       }
 
       // Command: process remote control actions from browser clients (logging only)
@@ -610,8 +627,9 @@ void loop() {
     layoutSent = true;
   }
 
-  // Stream telemetry at the configured interval
-  if (now - lastTelemetry >= TELEMETRY_INTERVAL_MS) {
+  // Stream telemetry at the configured interval (5m idle, 15s if a viewer is active)
+  unsigned long currentInterval = viewersActive ? TELEMETRY_ACTIVE_INTERVAL_MS : TELEMETRY_IDLE_INTERVAL_MS;
+  if (now - lastTelemetry >= currentInterval) {
     lastTelemetry = now;
     sendTelemetry();
   }

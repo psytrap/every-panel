@@ -18,8 +18,7 @@ This document specifies the architecture, data schemas, user interface design, a
     *   `disconnected`: Browser client has lost connection to the server. Inputs are locked, and the status dot pulses gray while it attempts to reconnect.
     *   `detached`: The server is online, but the physical IoT device is disconnected/offline. Inputs are disabled.
     *   `initializing`: Server is connected and device is online, but the layout configuration definition hasn't been uploaded/processed yet. Badge pulses orange.
-    *   `stale`: The device is online, but no telemetry packet has been received for more than 10 seconds (lagging link). Badge pulses pink.
-        > **TODO**: The 10s stale threshold is hardcoded on the client. Redesign so it is driven by the server's ping interval (`PING_INTERVAL_MS`), e.g. by including it in the `init` message, so the stale window scales automatically with the heartbeat configuration.
+    *   `stale`: The client-to-server connection has timed out or is lagging, determined by a failure to receive server keepalive pings for more than 3x the expected ping interval (independent of telemetry data transmission frequency). Badge pulses pink.
     *   `fault`: The device has reported an error/fault message in its telemetry stream. Badge pulses rapid red, showing the error description.
     *   `live`: The IoT device is connected. Browser clients can view telemetry but cannot control outputs (view-only mode).
     *   `control`: The IoT device is connected, and one client holds the exclusive lease. Only this client is permitted to write inputs.
@@ -254,11 +253,10 @@ stateDiagram-v2
         live --> control : Client Tab Acquires Lease Lock
         control --> live : Lease Released / Controller Disconnects
         
-        live --> stale : >10s without Telemetry
-        control --> stale : >10s without Telemetry
-        stale --> live : Telemetry Received (no lease)
-        stale --> control : Telemetry Received (lease active)
-        
+        live --> stale : >3x Ping Interval without Server Ping
+        control --> stale : >3x Ping Interval without Server Ping
+        stale --> live : Server Ping Received (no lease)
+        stale --> control : Server Ping Received (lease active)
         live --> fault : Sensor reports -127°C / Fault code
         control --> fault : Sensor reports -127°C / Fault code
         fault --> live : Fault Cleared (no lease)
