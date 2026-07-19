@@ -25,7 +25,10 @@ import {
   getStatsPageHtml
 } from "./views.ts";
 import {
-  handleWebSocketUpgrade
+  handleWebSocketUpgrade,
+  clients,
+  devices,
+  viewerState
 } from "./ws.ts";
 
 // ==========================================
@@ -407,6 +410,23 @@ async function handler(req: Request): Promise<Response> {
     });
   }
 
+  // Memory Debug REST API
+  if (path === "/api/debug/memory") {
+    const mem = Deno.memoryUsage();
+    return new Response(JSON.stringify({
+      timestamp: Date.now(),
+      rss: mem.rss,
+      heapTotal: mem.heapTotal,
+      heapUsed: mem.heapUsed,
+      external: mem.external,
+      clientsCount: clients.size,
+      devicesCount: devices.size,
+      viewerStateCount: viewerState.size,
+    }), {
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+
   // 404 Fallback
   return new Response("Not Found", { status: 404 });
 }
@@ -416,3 +436,17 @@ const PORT = Number(Deno.env.get("PORT")) || 8000;
 const HOST = Deno.env.get("HOST") || "0.0.0.0";
 console.log(`Server starting on ${HOST}:${PORT} (Auth: ${DISABLE_AUTH ? 'DISABLED' : 'ENABLED'})...`);
 Deno.serve({ port: PORT, hostname: HOST }, handler);
+
+// Periodic memory logger to console every hour
+setInterval(() => {
+  try {
+    const mem = Deno.memoryUsage();
+    const rss = (mem.rss / 1024 / 1024).toFixed(2);
+    const heapTotal = (mem.heapTotal / 1024 / 1024).toFixed(2);
+    const heapUsed = (mem.heapUsed / 1024 / 1024).toFixed(2);
+    const external = (mem.external / 1024 / 1024).toFixed(2);
+    console.log(`[Memory Debug] RSS: ${rss}MB | Heap Total: ${heapTotal}MB | Heap Used: ${heapUsed}MB | External: ${external}MB | Clients: ${clients.size} | Devices: ${devices.size} | ViewersState: ${viewerState.size}`);
+  } catch (e) {
+    console.error("[Memory Debug] Failed to read memory usage:", e);
+  }
+}, 3600000);

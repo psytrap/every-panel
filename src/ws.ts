@@ -22,7 +22,7 @@ export const wsChannel = typeof BroadcastChannel !== "undefined"
   : null;
 
 // Per-device viewer state: tracks last pong time and whether device was already notified
-const viewerState = new Map<string, { lastPong: number; notifiedActive: boolean }>();
+export const viewerState = new Map<string, { lastPong: number; notifiedActive: boolean }>();
 
 function getViewerState(deviceId: string) {
   if (!viewerState.has(deviceId)) {
@@ -192,6 +192,16 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
   socket.onopen = async () => {
     if (role === "device") {
       console.log(`[WS] Device connected to this isolate: ${deviceId}`);
+      
+      // Clean up any existing stale connection for this device ID to save resources
+      const existing = devices.get(deviceId);
+      if (existing) {
+        console.log(`[WS] Closing existing stale connection for device '${deviceId}'`);
+        try {
+          existing.socket.close();
+        } catch (_) {}
+      }
+      
       devices.set(deviceId, { socket, lastSeen: Date.now() });
       
       // Update global state in Deno KV
@@ -336,6 +346,14 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
         // Update global state in Deno KV to detached
         await kv.set(pk("device", deviceId, "status"), { state: "detached", controllerSessionId: null });
         broadcastLocalStatus(deviceId, "detached", null);
+
+        // If there are no local clients watching this device, delete from viewerState to prevent memory leaks
+        const remainingClients = Array.from(clients).some(
+          c => (c as any).role === "client" && (c as any).deviceId === deviceId
+        );
+        if (!remainingClients) {
+          viewerState.delete(deviceId);
+        }
       } else {
         console.log(`[WS] Stale device socket closed for ${deviceId} (ignored)`);
       }
@@ -353,6 +371,11 @@ export async function handleWebSocketUpgrade(req: Request): Promise<Response> {
       if (!remainingClients) {
         const vs = getViewerState(deviceId);
         vs.lastPong = 0; // Expire immediately
+        
+        // If the physical device is also not connected to this isolate, remove from viewerState to prevent memory leak
+        if (!devices.has(deviceId)) {
+          viewerState.delete(deviceId);
+        }
       }
       
       // Release control if this client tab held the active lease lock

@@ -105,16 +105,15 @@ export async function getLatestTelemetry(deviceId: string) {
 }
 
 export async function getHistory(deviceId: string, limit = 50) {
-  const list = kv.list<{ data: Record<string, unknown>; timestamp: number }>({
-    prefix: pk("device", deviceId, "history")
-  });
+  const list = kv.list<{ data: Record<string, unknown>; timestamp: number }>(
+    { prefix: pk("device", deviceId, "history") },
+    { limit, reverse: true }
+  );
   const results = [];
   for await (const entry of list) {
     results.push(entry.value);
   }
-  // Sort descending and take the limit
-  results.sort((a, b) => b.timestamp - a.timestamp);
-  return results.slice(0, limit);
+  return results;
 }
 
 export async function createSession(sessionId: string, username: string) {
