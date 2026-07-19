@@ -161,7 +161,7 @@ export function getDevicesDirectoryHtml(): string {
         <input type="text" id="add-device-input" placeholder="e.g. e0821c8b-ff4b-48ae-94a2-9b2ee0c6488d" style="width:100%; padding:10px 14px; margin-bottom:16px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
         
         <p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">Device Key (Secret passcode, optional - will auto-generate if empty):</p>
-        <input type="password" id="add-device-key-input" placeholder="e.g. secret_passcode_123" style="width:100%; padding:10px 14px; margin-bottom:20px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
+        <input type="password" id="add-device-key-input" autocomplete="new-password" placeholder="e.g. secret_passcode_123" style="width:100%; padding:10px 14px; margin-bottom:20px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); font-family:'Outfit', sans-serif; font-size:14px; outline:none; text-align:center; box-sizing:border-box;">
         
         <div style="display:flex; justify-content:flex-end; gap:12px;">
           <button onclick="hideAddDeviceModal()" class="btn-action" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); padding:8px 16px;">Cancel</button>
